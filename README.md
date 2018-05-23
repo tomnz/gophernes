@@ -1,2 +1,3 @@
 # gophernes
-[WIP] NES emulator written in Go.
+
+Coming soon...
