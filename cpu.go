@@ -1,7 +1,6 @@
 package gophernes
 
-// CPU implements the main NES CPU.
-type CPU struct {
+type cpu struct {
 	pc     uint16
 	regs   registers
 	flags  flags
@@ -22,4 +21,8 @@ type flags struct {
 	interruptDisable,
 	zero,
 	carry bool
+}
+
+func (c *cpu) init() {
+
 }

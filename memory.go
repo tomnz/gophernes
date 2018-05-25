@@ -9,3 +9,5 @@ const (
 type memory struct {
 	ram [internalRAMSize]byte
 }
+
+func (m *memory) init() {}
