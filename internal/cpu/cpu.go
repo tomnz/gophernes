@@ -58,9 +58,7 @@ func (c *CPU) Flags() Flags {
 	return c.flags
 }
 
-const (
-	resetVector = uint16(0xFFFE)
-)
+const resetVector = uint16(0xFFFE)
 
 func (c *CPU) Reset() {
 	c.flags = Flags{
@@ -88,7 +86,7 @@ func (c *CPU) step() uint64 {
 	inst := c.insts[opCode]
 
 	addr, cross := c.resolve(inst.addressMode)
-	inst.op(addr)
+	inst.op(c, addr)
 
 	cycles := inst.cycles
 	if inst.pageCrossCycle && cross {
