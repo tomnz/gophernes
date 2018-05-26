@@ -30,18 +30,18 @@ type CPU struct {
 	cycles uint64
 	insts  [256]*inst
 	mem    Memory
-	regs   registers
-	flags  flags
+	regs   Registers
+	flags  Flags
 }
 
-type registers struct {
+type Registers struct {
 	StackPtr,
 	Accumulator,
 	IndexX,
 	IndexY byte
 }
 
-type flags struct {
+type Flags struct {
 	Negative,
 	Overflow,
 	BreakCmd,
@@ -50,12 +50,20 @@ type flags struct {
 	Carry bool
 }
 
+func (c *CPU) Registers() Registers {
+	return c.regs
+}
+
+func (c *CPU) Flags() Flags {
+	return c.flags
+}
+
 const (
 	resetVector = uint16(0xFFFE)
 )
 
 func (c *CPU) Reset() {
-	c.flags = flags{
+	c.flags = Flags{
 		BreakCmd:         true,
 		InterruptDisable: true,
 	}
@@ -67,13 +75,15 @@ func (c *CPU) Reset() {
 	}
 }
 
-func (c *CPU) Run(instructions int) {
-	for i := 0; i < instructions; i++ {
-		c.doInstruction()
+func (c *CPU) Run(steps int) uint64 {
+	var cycles uint64
+	for i := 0; i < steps; i++ {
+		cycles += c.step()
 	}
+	return cycles
 }
 
-func (c *CPU) doInstruction() {
+func (c *CPU) step() uint64 {
 	opCode := c.prgRead8()
 	inst := c.insts[opCode]
 
@@ -85,9 +95,11 @@ func (c *CPU) doInstruction() {
 		cycles++
 	}
 	if c.config.trace {
+		// TODO: Better tracing! Let's store this as objects instead of logging
 		log.Printf("Op: %s | (%d)", inst.fullName(), cycles)
 	}
 	c.cycles += cycles
+	return cycles
 }
 
 func (c *CPU) prgRead8() byte {
