@@ -2,41 +2,33 @@ package gophernes
 
 import (
 	"io"
+
+	"github.com/tomnz/gophernes/internal/cpu"
 )
 
 // Console implements the main console.
 type Console struct {
-	cpu       *cpu
-	memory    *memory
-	cartridge *cartridge
+	cpu    *cpu.CPU
+	memory *Memory
 }
 
 // NewConsole initializes a new console.
-func NewConsole() *Console {
-	cpu := &cpu{}
-	cpu.init()
+func NewConsole(rom io.Reader) (*Console, error) {
+	cartridge, err := loadINES(rom)
+	if err != nil {
+		return nil, err
+	}
+	memory := &Memory{
+		cartridge: cartridge,
+	}
 
-	memory := &memory{}
-	memory.init()
+	cpu := cpu.NewCPU(&cpuMemory{memory})
+	memory.cpu = cpu
+
+	cpu.Reset()
 
 	return &Console{
 		cpu:    cpu,
 		memory: memory,
-	}
-}
-
-// LoadROM loads the given ROM data into the console.
-func (c *Console) LoadROM(rom io.Reader) error {
-	// TODO: Formats other than iNES?
-	cartridge, err := loadINES(rom)
-	if err != nil {
-		return err
-	}
-
-	c.cartridge = cartridge
-	return c.loadCartridge()
-}
-
-func (c *Console) loadCartridge() error {
-
+	}, nil
 }

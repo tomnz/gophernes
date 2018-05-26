@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+
+	"github.com/tomnz/gophernes/internal/cartridge"
 )
 
 const (
@@ -27,7 +29,7 @@ type inesHeader struct {
 	_ [2]byte
 }
 
-func loadINES(file io.Reader) (*cartridge, error) {
+func loadINES(file io.Reader) (cartridge.Cartridge, error) {
 	header := inesHeader{}
 	if err := binary.Read(file, binary.LittleEndian, &header); err != nil {
 		return nil, err
@@ -40,7 +42,7 @@ func loadINES(file io.Reader) (*cartridge, error) {
 	// https://wiki.nesdev.com/w/index.php/INES#Variant_comparison
 	// For now, assume iNES 1.0
 
-	mapper := mapper(header.flags6>>4 | (header.flags7 & 0xf0))
+	mapper := uint16(header.flags6>>4 | (header.flags7 & 0xf0))
 
 	if (header.flags6>>3)&1 == 1 {
 		// Trainer is present in the ROM - ignore
@@ -65,9 +67,5 @@ func loadINES(file io.Reader) (*cartridge, error) {
 		}
 	}
 
-	return &cartridge{
-		prg:    prg,
-		chr:    chr,
-		mapper: mapper,
-	}, nil
+	return cartridge.NewCartridge(mapper, prg, chr)
 }
