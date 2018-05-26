@@ -50,12 +50,44 @@ type Flags struct {
 	Carry bool
 }
 
+func (f Flags) asByte() byte {
+	var flags byte
+	if f.Negative {
+		flags |= 0x1 << 6
+	}
+	if f.Overflow {
+		flags |= 0x1 << 5
+	}
+	if f.BreakCmd {
+		flags |= 0x1 << 4
+	}
+	if f.InterruptDisable {
+		flags |= 0x1 << 2
+	}
+	if f.Zero {
+		flags |= 0x1 << 1
+	}
+	if f.Carry {
+		flags |= 0x1 << 0
+	}
+	return flags
+}
+
 func (c *CPU) Registers() Registers {
 	return c.regs
 }
 
 func (c *CPU) Flags() Flags {
 	return c.flags
+}
+
+func (c *CPU) setFlagsFromByte(flags byte) {
+	c.flags.Negative = (flags>>6)&1 == 1
+	c.flags.Overflow = (flags>>5)&1 == 1
+	c.flags.BreakCmd = (flags>>4)&1 == 1
+	c.flags.InterruptDisable = (flags>>1)&1 == 1
+	c.flags.Zero = (flags>>1)&1 == 1
+	c.flags.Carry = (flags>>0)&1 == 1
 }
 
 const resetVector = uint16(0xFFFE)
@@ -86,7 +118,7 @@ func (c *CPU) step() uint64 {
 	inst := c.insts[opCode]
 
 	addr, cross := c.resolve(inst.addressMode)
-	inst.op(c, addr)
+	inst.op(c, addr, inst.addressMode)
 
 	cycles := inst.cycles
 	if inst.pageCrossCycle && cross {
