@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/tomnz/gophernes"
 	"log"
 	"os"
 )
@@ -15,8 +16,13 @@ func main() {
 	if *rom == "" {
 		log.Fatalf("must specify rom file")
 	}
-	_, err := os.Open(*rom)
+	romFile, err := os.Open(*rom)
 	if os.IsNotExist(err) {
 		log.Fatalf("rom file not found: %q", *rom)
 	}
+	console, err := gophernes.NewConsole(romFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	console.Run()
 }

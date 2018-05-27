@@ -22,7 +22,7 @@ func NewConsole(rom io.Reader) (*Console, error) {
 		cartridge: cartridge,
 	}
 
-	cpu := cpu.NewCPU(&cpuMemory{memory})
+	cpu := cpu.NewCPU(&cpuMemory{memory}, cpu.WithTrace())
 	memory.cpu = cpu
 
 	cpu.Reset()
@@ -31,4 +31,9 @@ func NewConsole(rom io.Reader) (*Console, error) {
 		cpu:    cpu,
 		memory: memory,
 	}, nil
+}
+
+func (c *Console) Run() error {
+	_, err := c.cpu.RunTilHalt()
+	return err
 }

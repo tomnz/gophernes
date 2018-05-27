@@ -146,16 +146,16 @@ func (c *CPU) step() (uint64, error) {
 	opCode := c.prgRead8()
 	inst := c.insts[opCode]
 
+	if c.config.trace {
+		// TODO: Better tracing! Let's store this as objects instead of logging
+		log.Printf("Op: %s", inst.fullName())
+	}
 	addr, cross := c.resolve(inst.addressMode)
 	inst.op(c, addr, inst.addressMode)
 
 	cycles := inst.cycles
 	if inst.pageCrossCycle && cross {
 		cycles++
-	}
-	if c.config.trace {
-		// TODO: Better tracing! Let's store this as objects instead of logging
-		log.Printf("Op: %s | (%d)", inst.fullName(), cycles)
 	}
 	c.cycles += cycles
 	return cycles, nil

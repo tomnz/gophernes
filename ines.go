@@ -15,17 +15,17 @@ const (
 )
 
 type inesHeader struct {
-	magic uint32
-	prgLen,
-	chrLen,
-	flags6,
-	flags7,
-	flags8,
-	flags9,
-	flags10,
-	flags11,
-	flags12,
-	flags13 byte
+	Magic uint32
+	PrgLen,
+	ChrLen,
+	Flags6,
+	Flags7,
+	Flags8,
+	Flags9,
+	Flags10,
+	Flags11,
+	Flags12,
+	Flags13 byte
 	_ [2]byte
 }
 
@@ -34,7 +34,7 @@ func loadINES(file io.Reader) (cartridge.Cartridge, error) {
 	if err := binary.Read(file, binary.LittleEndian, &header); err != nil {
 		return nil, err
 	}
-	if header.magic != inesMagic {
+	if header.Magic != inesMagic {
 		return nil, errors.New("does not appear to be an iNES file: invalid header")
 	}
 
@@ -42,26 +42,26 @@ func loadINES(file io.Reader) (cartridge.Cartridge, error) {
 	// https://wiki.nesdev.com/w/index.php/INES#Variant_comparison
 	// For now, assume iNES 1.0
 
-	mapper := uint16(header.flags6>>4 | (header.flags7 & 0xf0))
+	mapper := uint16(header.Flags6>>4 | header.Flags7&0xf0)
 
-	if (header.flags6>>3)&1 == 1 {
+	if (header.Flags6>>3)&1 == 1 {
 		// Trainer is present in the ROM - ignore
 		if _, err := io.ReadFull(file, make([]byte, 512)); err != nil {
 			return nil, err
 		}
 	}
 
-	prg := make([]byte, prgLenMultiplier*int(header.prgLen))
+	prg := make([]byte, prgLenMultiplier*int(header.PrgLen))
 	if _, err := io.ReadFull(file, prg); err != nil {
 		return nil, err
 	}
 
 	var chr []byte
-	if header.chrLen == 0 {
+	if header.ChrLen == 0 {
 		// Special case - provide an empty block
 		chr = make([]byte, 8192)
 	} else {
-		chr := make([]byte, chrLenMultiplier*int(header.chrLen))
+		chr := make([]byte, chrLenMultiplier*int(header.ChrLen))
 		if _, err := io.ReadFull(file, chr); err != nil {
 			return nil, err
 		}
