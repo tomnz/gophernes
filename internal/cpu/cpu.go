@@ -90,7 +90,10 @@ func (c *CPU) setFlagsFromByte(flags byte) {
 	c.flags.Carry = (flags>>0)&1 == 1
 }
 
-const resetVector = uint16(0xFFFE)
+const (
+	resetVector = uint16(0xFFFC)
+	irqVector   = uint16(0xFFFE)
+)
 
 func (c *CPU) Reset() {
 	c.flags = Flags{
@@ -132,6 +135,17 @@ func (c *CPU) step() uint64 {
 	return cycles
 }
 
+func (c *CPU) branch(offset uint16) {
+	page := c.pc >> 2
+	c.pc += offset
+	// Special case - need to manually add cycles
+	c.cycles++
+	if page != c.pc>>2 {
+		// Page cross
+		c.cycles += 2
+	}
+}
+
 func (c *CPU) prgRead8() byte {
 	result := c.read8(c.pc)
 	c.pc++
@@ -161,4 +175,29 @@ func (c *CPU) write8(addr uint16, val byte) {
 func (c *CPU) write16(addr uint16, val uint16) {
 	c.mem.Write(addr, byte(val&0xFF))
 	c.mem.Write(addr+1, byte(val>>8))
+}
+
+func (c *CPU) stackPush8(val byte) {
+	stackAddr := uint16(c.regs.StackPtr)
+	stackAddr |= 0x100
+	c.write8(stackAddr, val)
+	c.regs.StackPtr++
+}
+
+func (c *CPU) stackPull8() byte {
+	c.regs.StackPtr--
+	stackAddr := uint16(c.regs.StackPtr)
+	stackAddr |= 0x100
+	return c.read8(stackAddr)
+}
+
+func (c *CPU) stackPush16(val uint16) {
+	c.stackPush8(byte(val >> 8))
+	c.stackPush8(byte(val & 0xFF))
+}
+
+func (c *CPU) stackPull16() uint16 {
+	val := uint16(c.stackPull8())
+	val |= uint16(c.stackPull8()) << 8
+	return val
 }
