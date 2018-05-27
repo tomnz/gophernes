@@ -1,8 +1,11 @@
 package cpu
 
 import (
+	"errors"
 	"log"
 )
+
+var ErrHalted = errors.New("cpu halted")
 
 func NewCPU(mem Memory, opts ...Option) *CPU {
 	config := defaultConfig()
@@ -32,6 +35,7 @@ type CPU struct {
 	mem    Memory
 	regs   Registers
 	flags  Flags
+	halted bool
 }
 
 type Registers struct {
@@ -102,21 +106,43 @@ func (c *CPU) Reset() {
 	}
 
 	c.pc = c.read16(resetVector)
+	c.halted = false
 
 	if c.config.trace {
 		log.Printf("Reset CPU to PC %#x", c.pc)
 	}
 }
 
-func (c *CPU) Run(steps int) uint64 {
+func (c *CPU) Run(steps int) (uint64, error) {
 	var cycles uint64
 	for i := 0; i < steps; i++ {
-		cycles += c.step()
+		stepCycles, err := c.step()
+		cycles += stepCycles
+		if err != nil {
+			return cycles, err
+		}
 	}
-	return cycles
+	return cycles, nil
 }
 
-func (c *CPU) step() uint64 {
+func (c *CPU) RunTilHalt() (uint64, error) {
+	var cycles uint64
+	for {
+		stepCycles, err := c.step()
+		cycles += stepCycles
+		if err != nil {
+			if err == ErrHalted {
+				return cycles, nil
+			}
+			return cycles, err
+		}
+	}
+}
+
+func (c *CPU) step() (uint64, error) {
+	if c.halted {
+		return 0, ErrHalted
+	}
 	opCode := c.prgRead8()
 	inst := c.insts[opCode]
 
@@ -132,7 +158,7 @@ func (c *CPU) step() uint64 {
 		log.Printf("Op: %s | (%d)", inst.fullName(), cycles)
 	}
 	c.cycles += cycles
-	return cycles
+	return cycles, nil
 }
 
 func (c *CPU) branch(offset uint16) {
@@ -144,6 +170,13 @@ func (c *CPU) branch(offset uint16) {
 		// Page cross
 		c.cycles += 2
 	}
+}
+
+func (c *CPU) compare(a, b byte) {
+	diff := a - b
+	c.flags.Carry = a >= b
+	c.flags.Zero = diff == 0
+	c.flags.Negative = (diff>>7)&0x1 == 1
 }
 
 func (c *CPU) prgRead8() byte {

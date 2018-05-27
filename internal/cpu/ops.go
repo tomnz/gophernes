@@ -18,84 +18,84 @@ var insts = [256]*inst{
 	// 00
 	{"BRK", 7, brk, AddressImplicit, false},
 	{"ORA", 6, ora, AddressIndirectX, false},
-	instIllegal(),
-	instNoop(8),
-	instNoop(3),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectX, false},
+	{"NOP", 3, nop, AddressZeroPage, false},
 	{"ORA", 3, ora, AddressZeroPage, false},
 	{"ASL", 5, asl, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPage, false},
 	{"PHP", 3, php, AddressImplicit, false},
 	{"ORA", 2, ora, AddressImmediate, false},
 	{"ASL", 2, asl, AddressAccumulator, false},
-	instNoop(2),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImmediate, false},
+	{"NOP", 4, nop, AddressAbsolute, false},
 	{"ORA", 4, ora, AddressAbsolute, false},
 	{"ASL", 6, asl, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsolute, false},
 
 	// 10
 	{"BPL", 2, bpl, AddressRelative, false},
 	{"ORA", 5, ora, AddressIndirectY, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"ORA", 4, ora, AddressZeroPageX, false},
 	{"ASL", 6, asl, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"CLC", 2, clc, AddressImplicit, false},
 	{"ORA", 4, ora, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"ORA", 4, ora, AddressAbsoluteX, true},
 	{"ASL", 7, asl, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
 
 	// 20
 	{"JSR", 6, jsr, AddressAbsolute, false},
 	{"AND", 6, and, AddressIndirectX, false},
-	instIllegal(),
-	instNoop(8),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectX, false},
 	{"BIT", 3, bit, AddressZeroPage, false},
 	{"AND", 3, and, AddressZeroPage, false},
 	{"ROL", 5, rol, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPage, false},
 	{"PLP", 4, plp, AddressImplicit, false},
 	{"AND", 2, and, AddressImmediate, false},
 	{"ROL", 2, rol, AddressAccumulator, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"BIT", 4, bit, AddressAbsolute, false},
 	{"AND", 4, and, AddressAbsolute, false},
 	{"ROL", 6, rol, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsolute, false},
 
 	// 30
 	{"BMI", 2, bmi, AddressRelative, false},
 	{"AND", 5, and, AddressIndirectY, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"AND", 4, and, AddressZeroPageX, false},
 	{"ROL", 6, rol, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"SEC", 2, sec, AddressImplicit, false},
 	{"AND", 4, and, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"AND", 4, and, AddressAbsoluteX, true},
 	{"ROL", 7, rol, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
 
 	// 40
 	{"RTI", 6, rti, AddressImplicit, false},
 	{"EOR", 6, eor, AddressIndirectX, false},
-	instIllegal(),
-	instNoop(8),
-	instNoop(3),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectX, false},
+	{"NOP", 3, nop, AddressZeroPage, false},
 	{"EOR", 3, eor, AddressZeroPage, false},
 	{"LSR", 5, lsr, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPage, false},
 	{"PHA", 3, pha, AddressImplicit, false},
 	{"EOR", 2, eor, AddressImmediate, false},
 	{"LSR", 2, lsr, AddressAccumulator, false},
@@ -103,205 +103,217 @@ var insts = [256]*inst{
 	{"JMP", 3, jmp, AddressAbsolute, false},
 	{"EOR", 4, eor, AddressAbsolute, false},
 	{"LSR", 6, lsr, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsolute, false},
 
 	// 50
 	{"BVC", 2, bvc, AddressRelative, false},
 	{"EOR", 5, eor, AddressIndirectX, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"EOR", 4, eor, AddressZeroPageX, false},
 	{"LSR", 6, lsr, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"CLI", 2, cli, AddressImplicit, false},
 	{"EOR", 4, eor, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"EOR", 4, eor, AddressAbsoluteX, true},
 	{"LSR", 7, lsr, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
 
 	// 60
 	{"RTS", 6, rts, AddressImplicit, false},
 	{"ADC", 6, adc, AddressIndirectX, false},
-	instIllegal(),
-	instNoop(8),
-	instNoop(3),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectX, false},
+	{"NOP", 3, nop, AddressZeroPage, false},
 	{"ADC", 3, adc, AddressZeroPage, false},
 	{"ROR", 5, ror, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPage, false},
 	{"PLA", 4, pla, AddressImplicit, false},
 	{"ADC", 2, adc, AddressImmediate, false},
 	{"ROR", 2, ror, AddressAccumulator, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"JMP", 5, jmp, AddressIndirect, false},
 	{"ADC", 4, adc, AddressAbsolute, false},
 	{"ROR", 6, ror, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsoluteX, false},
 
 	// 70
 	{"BVS", 2, bvs, AddressRelative, false},
 	{"ADC", 5, adc, AddressIndirectY, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"ADC", 4, adc, AddressZeroPageX, false},
 	{"ROR", 6, ror, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"SEI", 2, sei, AddressImplicit, false},
 	{"ADC", 4, adc, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"ADC", 4, adc, AddressAbsoluteX, true},
 	{"ROR", 7, ror, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
 
 	// 80
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"STA", 6, sta, AddressIndirectX, false},
-	instNoop(2),
-	instNoop(6),
+	{"NOP", 2, nop, AddressImmediate, false},
+	{"NOP", 6, nop, AddressIndirectX, false},
 	{"STY", 3, sty, AddressZeroPage, false},
 	{"STA", 3, sta, AddressZeroPage, false},
 	{"STX", 3, stx, AddressZeroPage, false},
-	instNoop(3),
+	{"NOP", 3, nop, AddressZeroPage, false},
 	{"DEY", 2, dey, AddressImplicit, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"TXA", 2, txa, AddressImplicit, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"STY", 4, sty, AddressAbsolute, false},
 	{"STA", 4, sta, AddressAbsolute, false},
 	{"STX", 4, stx, AddressAbsolute, false},
-	instNoop(4),
+	{"NOP", 4, nop, AddressAbsoluteX, false},
 
 	// 90
 	{"BCC", 2, bcc, AddressRelative, false},
 	{"STA", 6, sta, AddressIndirectY, false},
-	instIllegal(),
-	instNoop(6),
+	instHalt(),
+	{"NOP", 6, nop, AddressIndirectY, false},
 	{"STY", 4, sty, AddressZeroPageX, false},
 	{"STA", 4, sta, AddressZeroPageX, false},
 	{"STX", 4, stx, AddressZeroPageY, false},
-	instNoop(4),
+	{"NOP", 4, nop, AddressZeroPageY, false},
 	{"TYA", 2, tya, AddressImplicit, false},
 	{"STA", 5, sta, AddressAbsoluteY, false},
 	{"TXS", 2, txs, AddressImplicit, false},
-	instNoop(5),
-	instNoop(5),
+	{"NOP", 5, nop, AddressAbsoluteY, false},
+	{"NOP", 5, nop, AddressAbsoluteX, false},
 	{"STA", 5, sta, AddressAbsoluteX, false},
-	instNoop(5),
-	instNoop(5),
+	{"NOP", 5, nop, AddressAbsoluteY, false},
+	{"NOP", 5, nop, AddressAbsoluteY, false},
 
 	// A0
 	{"LDY", 2, ldy, AddressImmediate, false},
-	instNoop(6),
+	{"LDA", 6, lda, AddressIndirectX, false},
 	{"LDX", 2, ldx, AddressImmediate, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressIndirectX, false},
 	{"LDY", 3, ldy, AddressZeroPage, false},
 	{"LDA", 3, lda, AddressZeroPage, false},
 	{"LDX", 3, ldx, AddressZeroPage, false},
-	instNoop(3),
+	{"NOP", 3, nop, AddressZeroPage, false},
 	{"TAY", 2, tay, AddressImplicit, false},
 	{"LDA", 2, lda, AddressImmediate, false},
 	{"TAX", 2, tax, AddressImplicit, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"LDY", 4, ldy, AddressAbsolute, false},
 	{"LDA", 4, lda, AddressAbsolute, false},
 	{"LDX", 4, ldx, AddressAbsolute, false},
-	instNoop(4),
+	{"NOP", 4, nop, AddressAbsolute, false},
 
 	// B0
 	{"BCS", 2, bcs, AddressRelative, false},
-	instNoop(5),
-	instIllegal(),
-	instNoop(5),
+	{"LDA", 5, lda, AddressIndirectY, true},
+	instHalt(),
+	{"NOP", 5, nop, AddressIndirectY, true},
 	{"LDY", 4, ldy, AddressZeroPageX, false},
 	{"LDA", 4, lda, AddressZeroPageX, false},
 	{"LDX", 4, ldx, AddressZeroPageY, false},
-	instNoop(4),
+	{"NOP", 4, nop, AddressZeroPageY, false},
 	{"CLV", 2, clv, AddressImplicit, false},
 	{"LDA", 4, lda, AddressAbsoluteY, true},
 	{"TSX", 2, tsx, AddressImplicit, false},
-	instNoop(4),
+	{"NOP", 4, nop, AddressAbsoluteY, true},
 	{"LDY", 4, ldy, AddressAbsoluteX, true},
 	{"LDA", 4, lda, AddressAbsoluteX, true},
 	{"LDX", 4, ldx, AddressAbsoluteY, true},
-	instNoop(4),
+	{"NOP", 4, nop, AddressAbsoluteY, true},
 
 	// C0
 	{"CPY", 2, cpy, AddressImmediate, false},
 	{"CMP", 6, cmp, AddressIndirectX, false},
-	instNoop(2),
-	instNoop(8),
+	{"NOP", 2, nop, AddressImmediate, false},
+	{"NOP", 8, nop, AddressIndirectX, false},
 	{"CPY", 3, cpy, AddressZeroPage, false},
 	{"CMP", 3, cmp, AddressZeroPage, false},
 	{"DEC", 5, dec, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPageY, false},
 	{"INY", 2, iny, AddressImplicit, false},
 	{"CMP", 2, cmp, AddressImmediate, false},
 	{"DEX", 2, dex, AddressImplicit, false},
-	instNoop(2),
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"CPY", 4, cpy, AddressAbsolute, false},
 	{"CMP", 4, cmp, AddressAbsolute, false},
 	{"DEC", 6, dec, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsolute, false},
 
 	// D0
 	{"BNE", 2, bne, AddressRelative, false},
 	{"CMP", 5, cmp, AddressIndirectY, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"CMP", 4, cmp, AddressZeroPageX, false},
 	{"DEC", 6, dec, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"CLD", 2, cld, AddressImplicit, false},
 	{"CMP", 4, cmp, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"CMP", 4, cmp, AddressAbsoluteX, true},
 	{"DEC", 7, dec, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
 
 	// E0
 	{"CPX", 2, cpx, AddressImmediate, false},
 	{"SBC", 6, sbc, AddressIndirectX, false},
-	instNoop(2),
-	instNoop(8),
+	{"NOP", 2, nop, AddressImmediate, false},
+	{"NOP", 8, nop, AddressIndirectX, false},
 	{"CPX", 3, cpx, AddressZeroPage, false},
 	{"SBC", 3, sbc, AddressZeroPage, false},
 	{"INC", 5, inc, AddressZeroPage, false},
-	instNoop(5),
+	{"NOP", 5, nop, AddressZeroPage, false},
 	{"INX", 2, inx, AddressImplicit, false},
 	{"SBC", 2, sbc, AddressImmediate, false},
-	instNoop(2),
-	instNoop(2),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 2, nop, AddressImmediate, false},
 	{"CPX", 4, cpx, AddressAbsolute, false},
 	{"SBC", 4, sbc, AddressAbsolute, false},
 	{"INC", 6, inc, AddressAbsolute, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressAbsolute, false},
 
 	// F0
 	{"BEQ", 2, beq, AddressRelative, false},
 	{"SBC", 5, sbc, AddressIndirectY, true},
-	instIllegal(),
-	instNoop(8),
-	instNoop(4),
+	instHalt(),
+	{"NOP", 8, nop, AddressIndirectY, false},
+	{"NOP", 4, nop, AddressZeroPageX, false},
 	{"SBC", 4, sbc, AddressZeroPageX, false},
 	{"INC", 6, inc, AddressZeroPageX, false},
-	instNoop(6),
+	{"NOP", 6, nop, AddressZeroPageX, false},
 	{"SED", 2, sed, AddressImplicit, false},
 	{"SBC", 4, sbc, AddressAbsoluteY, true},
-	instNoop(2),
-	instNoop(7),
-	instNoop(4),
+	{"NOP", 2, nop, AddressImplicit, false},
+	{"NOP", 7, nop, AddressAbsoluteY, false},
+	{"NOP", 4, nop, AddressAbsoluteX, true},
 	{"SBC", 4, sbc, AddressAbsoluteX, true},
 	{"INC", 7, inc, AddressAbsoluteX, false},
-	instNoop(7),
+	{"NOP", 7, nop, AddressAbsoluteX, false},
+}
+
+func OpCodes() map[string]map[AddressMode]byte {
+	opCodes := make(map[string]map[AddressMode]byte)
+	for code, inst := range insts {
+		if _, ok := opCodes[inst.name]; !ok {
+			opCodes[inst.name] = make(map[AddressMode]byte)
+		}
+		// Overwrites if duplicate op/mode
+		opCodes[inst.name][inst.addressMode] = byte(code)
+	}
+	return opCodes
 }
 
 func (c *CPU) initInstructions() {
@@ -456,15 +468,15 @@ func sbc(cpu *CPU, addr uint16, mode AddressMode) {
 }
 
 func cmp(cpu *CPU, addr uint16, mode AddressMode) {
-	compare(cpu.regs.Accumulator, cpu.read8(addr), cpu)
+	cpu.compare(cpu.regs.Accumulator, cpu.read8(addr))
 }
 
 func cpx(cpu *CPU, addr uint16, mode AddressMode) {
-	compare(cpu.regs.IndexX, cpu.read8(addr), cpu)
+	cpu.compare(cpu.regs.IndexX, cpu.read8(addr))
 }
 
 func cpy(cpu *CPU, addr uint16, mode AddressMode) {
-	compare(cpu.regs.IndexY, cpu.read8(addr), cpu)
+	cpu.compare(cpu.regs.IndexY, cpu.read8(addr))
 }
 
 // Increments and Decrements
@@ -685,6 +697,8 @@ func rti(cpu *CPU, addr uint16, mode AddressMode) {
 	cpu.pc = cpu.stackPull16()
 }
 
+func nop(cpu *CPU, addr uint16, mode AddressMode) {}
+
 // Unofficial / Illegal Opcodes
 // http://wiki.nesdev.com/w/index.php/Programming_with_unofficial_opcodes
 // http://www.oxyron.de/html/opcodes02.html
@@ -699,26 +713,12 @@ func alr(cpu *CPU, addr uint16, mode AddressMode) {
 
 // Helpers
 
-func compare(a, b byte, cpu *CPU) {
-	diff := a - b
-	cpu.flags.Carry = a >= b
-	cpu.flags.Zero = diff == 0
-	cpu.flags.Negative = (diff>>7)&0x1 == 1
-}
-
-func instNoop(cycles uint64) *inst {
+func instHalt() *inst {
 	return &inst{
-		name:   "NOP",
-		cycles: cycles,
-		op:     func(cpu *CPU, addr uint16, mode AddressMode) {},
-	}
-}
-
-func instIllegal() *inst {
-	return &inst{
-		name: "ILLEGAL",
+		name:        "KIL",
+		addressMode: AddressImplicit,
 		op: func(cpu *CPU, addr uint16, mode AddressMode) {
-			panic("illegal operation")
+			cpu.halted = true
 		},
 	}
 }

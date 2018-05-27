@@ -15,12 +15,15 @@ type testMemory struct {
 	mem map[uint16]byte
 }
 
+var ops = cpu.OpCodes()
+
 // newTestMemory instantiates a new testMemory with the given data.
 // The first page is written as contents == position. I.e. address 0x10 contains value 0x10 and so on.
 // Data is written past the first page (starting at 0x0100) and program is written starting at 0x8000.
 func newTestMemory(data []byte, prg []byte) *testMemory {
 	mem := map[uint16]byte{}
 
+	log.Printf("%#v", prg)
 	for i := 0; i < 256; i++ {
 		mem[uint16(i)] = byte(i)
 	}
@@ -30,10 +33,12 @@ func newTestMemory(data []byte, prg []byte) *testMemory {
 	for index, val := range prg {
 		mem[uint16(index)+0x8000] = val
 	}
+	// Add halt code to end test
+	mem[uint16(len(prg))+0x8000] = ops["KIL"][cpu.AddressImplicit]
 
 	// Initialize reset vector to point to beginning of prg block
-	mem[0xFFFE] = 0
-	mem[0xFFFF] = 0x80
+	mem[0xFFFC] = 0
+	mem[0xFFFD] = 0x80
 
 	return &testMemory{
 		mem: mem,
@@ -55,9 +60,8 @@ func (t *testMemory) Write(addr uint16, val byte) {
 func TestOps(t *testing.T) {
 	testCases := map[string]struct {
 		// Inputs
-		data  []byte
-		prg   []byte
-		steps int
+		data []byte
+		prg  []byte
 		// Expected outputs
 		regs   *cpu.Registers
 		flags  *cpu.Flags
@@ -65,11 +69,9 @@ func TestOps(t *testing.T) {
 	}{
 		"load accumulator: immediate": {
 			prg: []byte{
-				// LDA imm
-				0xA9,
+				ops["LDA"][cpu.AddressImmediate],
 				2,
 			},
-			steps: 1,
 			regs: &cpu.Registers{
 				Accumulator: 2,
 			},
@@ -77,11 +79,9 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: zero page": {
 			prg: []byte{
-				// LDA zp
-				0xA5,
+				ops["LDA"][cpu.AddressZeroPage],
 				2,
 			},
-			steps: 1,
 			regs: &cpu.Registers{
 				Accumulator: 2,
 			},
@@ -89,14 +89,11 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: zero page x": {
 			prg: []byte{
-				// LDX imm
-				0xA2,
+				ops["LDX"][cpu.AddressImmediate],
 				3,
-				// LDA zpx
-				0xB5,
+				ops["LDA"][cpu.AddressZeroPageX],
 				2,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 5,
 				IndexX:      3,
@@ -106,13 +103,11 @@ func TestOps(t *testing.T) {
 		"load accumulator: absolute": {
 			data: []byte{10, 11, 12},
 			prg: []byte{
-				// LDA abs
-				0xAD,
+				ops["LDA"][cpu.AddressAbsolute],
 				// Address 0x0102
 				0x02,
 				0x01,
 			},
-			steps: 1,
 			regs: &cpu.Registers{
 				Accumulator: 12,
 			},
@@ -120,16 +115,13 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: absolute x": {
 			prg: []byte{
-				// LDX imm
-				0xA2,
+				ops["LDX"][cpu.AddressImmediate],
 				3,
-				// LDA absx
-				0xBD,
+				ops["LDA"][cpu.AddressAbsoluteX],
 				// Address 0x00F0
 				0xF0,
 				0x00,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 0xF3,
 				IndexX:      3,
@@ -139,16 +131,13 @@ func TestOps(t *testing.T) {
 		"load accumulator: absolute x with page cross": {
 			data: []byte{10, 11, 12},
 			prg: []byte{
-				// LDX imm
-				0xA2,
+				ops["LDX"][cpu.AddressImmediate],
 				3,
-				// LDA absx
-				0xBD,
+				ops["LDA"][cpu.AddressAbsoluteX],
 				// Address 0x00FF
 				0xFF,
 				0x00,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 12,
 				IndexX:      3,
@@ -158,16 +147,13 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: absolute y": {
 			prg: []byte{
-				// LDY imm
-				0xA0,
+				ops["LDY"][cpu.AddressImmediate],
 				3,
-				// LDA absy
-				0xB9,
+				ops["LDA"][cpu.AddressAbsoluteY],
 				// Address 0x00F0
 				0xF0,
 				0x00,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 0xF3,
 				IndexY:      3,
@@ -177,16 +163,13 @@ func TestOps(t *testing.T) {
 		"load accumulator: absolute y with page cross": {
 			data: []byte{10, 11, 12},
 			prg: []byte{
-				// LDY imm
-				0xA0,
+				ops["LDY"][cpu.AddressImmediate],
 				3,
-				// LDA absy
-				0xB9,
+				ops["LDA"][cpu.AddressAbsoluteY],
 				// Address 0x00F0
 				0xFF,
 				0x00,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 12,
 				IndexY:      3,
@@ -195,14 +178,11 @@ func TestOps(t *testing.T) {
 		},
 		"increment: zero page": {
 			prg: []byte{
-				// INC zp (5)
-				0xE6,
+				ops["INC"][cpu.AddressZeroPage],
 				5,
-				// LDA zp (3)
-				0xA5,
+				ops["LDA"][cpu.AddressZeroPage],
 				5,
 			},
-			steps: 2,
 			regs: &cpu.Registers{
 				Accumulator: 6,
 			},
@@ -210,11 +190,9 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: zero flag": {
 			prg: []byte{
-				// LDA imm
-				0xA9,
+				ops["LDA"][cpu.AddressImmediate],
 				0,
 			},
-			steps: 1,
 			flags: &cpu.Flags{
 				BreakCmd:         true,
 				InterruptDisable: true,
@@ -224,11 +202,9 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: nonzero flag": {
 			prg: []byte{
-				// LDA imm
-				0xA9,
+				ops["LDA"][cpu.AddressImmediate],
 				1,
 			},
-			steps: 1,
 			flags: &cpu.Flags{
 				BreakCmd:         true,
 				InterruptDisable: true,
@@ -238,11 +214,9 @@ func TestOps(t *testing.T) {
 		},
 		"load accumulator: negative": {
 			prg: []byte{
-				// LDA imm
-				0xA9,
+				ops["LDA"][cpu.AddressImmediate],
 				0xF0,
 			},
-			steps: 1,
 			flags: &cpu.Flags{
 				BreakCmd:         true,
 				InterruptDisable: true,
@@ -253,11 +227,13 @@ func TestOps(t *testing.T) {
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			log.Printf("Starting test %q", name)
 			mem := newTestMemory(tc.data, tc.prg)
 			cpu := cpu.NewCPU(mem, cpu.WithTrace())
 			cpu.Reset()
-			cycles := cpu.Run(tc.steps)
+			cycles, err := cpu.RunTilHalt()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
 
 			if tc.regs != nil {
 				if diff := cmp.Diff(*tc.regs, cpu.Registers()); diff != "" {
