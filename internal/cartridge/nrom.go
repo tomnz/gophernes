@@ -40,11 +40,16 @@ func (n *nrom) CPUWrite(addr uint16, val byte) {
 	panic(fmt.Sprintf("unhandled memory write to address %#x", addr))
 }
 
-func (n *nrom) PPURead(addr uint16) byte {
-	// TODO: Proper PPU memory mapping
-	return n.chr[addr]
+func (n *nrom) PPURead(addr uint16, vram []byte) byte {
+	if addr < 0x2000 {
+		return n.chr[addr]
+	}
+	if addr >= 0x2000 && addr < 0x3EFF {
+		return vram[0x7FF]
+	}
+	panic(fmt.Sprintf("unhandled memory read from address %#x", addr))
 }
 
-func (n *nrom) PPUWrite(addr uint16, val byte) {
+func (n *nrom) PPUWrite(addr uint16, val byte, vram []byte) {
 	panic(fmt.Sprintf("unhandled memory write to address %#x", addr))
 }

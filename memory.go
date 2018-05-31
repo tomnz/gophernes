@@ -8,15 +8,15 @@ import (
 )
 
 func NewMemory(cpu *cpu.CPU, cartridge cartridge.Cartridge) *Memory {
-	return &Memory{}
+	return &Memory{
+		ram: make([]byte, internalRAMSize),
+	}
 }
 
-const (
-	internalRAMSize = 0x7FF
-)
+const internalRAMSize = 0x800
 
 type Memory struct {
-	ram       [internalRAMSize]byte
+	ram       []byte
 	cpu       *cpu.CPU
 	cartridge cartridge.Cartridge
 }
@@ -44,6 +44,15 @@ func (m *Memory) CPUWrite(addr uint16, val byte) {
 	} else {
 		panic(fmt.Sprintf("unhandled cpu memory write to address %#x", addr))
 	}
+}
+
+func (m *Memory) PPURead(addr uint16, vram []byte) byte {
+	// PPU memory is custom mapped by the cartridge
+	return m.cartridge.PPURead(addr, vram)
+}
+
+func (m *Memory) PPUWrite(addr uint16, val byte, vram []byte) {
+
 }
 
 type cpuMemory struct {

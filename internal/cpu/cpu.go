@@ -196,8 +196,8 @@ func (c *CPU) read8(addr uint16) byte {
 }
 
 func (c *CPU) read16(addr uint16) uint16 {
-	result := uint16(c.mem.Read(addr))
-	result |= uint16(c.mem.Read(addr+1)) << 8
+	result := uint16(c.read8(addr))
+	result |= uint16(c.read8(addr+1)) << 8
 	return result
 }
 
@@ -205,9 +205,9 @@ func (c *CPU) write8(addr uint16, val byte) {
 	c.mem.Write(addr, val)
 }
 
-func (c *CPU) write16(addr uint16, val uint16) {
-	c.mem.Write(addr, byte(val&0xFF))
-	c.mem.Write(addr+1, byte(val>>8))
+func (c *CPU) write16(addr, val uint16) {
+	c.write8(addr, byte(val&0xFF))
+	c.write8(addr+1, byte(val>>8))
 }
 
 func (c *CPU) stackPush8(val byte) {

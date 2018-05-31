@@ -7,8 +7,8 @@ import (
 type Cartridge interface {
 	CPURead(addr uint16) byte
 	CPUWrite(addr uint16, val byte)
-	PPURead(addr uint16) byte
-	PPUWrite(addr uint16, val byte)
+	PPURead(addr uint16, vram []byte) byte
+	PPUWrite(addr uint16, val byte, vram []byte)
 }
 
 func NewCartridge(mapper uint16, prg, chr []byte) (Cartridge, error) {
