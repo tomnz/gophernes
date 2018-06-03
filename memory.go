@@ -2,40 +2,20 @@ package gophernes
 
 import (
 	"fmt"
-
-	"github.com/tomnz/gophernes/internal/cartridge"
-	"github.com/tomnz/gophernes/internal/cpu"
-	"github.com/tomnz/gophernes/internal/ppu"
 )
 
-func NewMemory(cartridge cartridge.Cartridge) *Memory {
-	return &Memory{
-		ram:       make([]byte, internalRAMSize),
-		cartridge: cartridge,
-	}
-}
-
-const internalRAMSize uint16 = 0x800
-
-type Memory struct {
-	ram       []byte
-	cpu       *cpu.CPU
-	ppu       *ppu.PPU
-	cartridge cartridge.Cartridge
-}
-
-func (m *Memory) CPURead(addr uint16) byte {
+func (c *Console) CPURead(addr uint16) byte {
 	if addr < 0x2000 {
 		// Main RAM - mirrored for several address ranges, so drop excess bytes
 		// 0x0000 - 0x07ff
 		// 0x0800 - 0x0fff
 		// 0x1000 - 0x17ff
 		// 0x1800 - 0x1fff
-		return m.ram[addr&(internalRAMSize-1)]
+		return c.ram[addr&(internalRAMSize-1)]
 
 	} else if addr >= 0x2000 && addr < 0x4000 {
 		// PPU registers
-		return m.ppu.ReadReg(byte(addr & 0x7))
+		return c.ppu.ReadReg(byte(addr & 0x7))
 
 	} else if addr >= 0x4000 && addr < 0x4020 {
 		// Memory-mapped registers
@@ -46,74 +26,74 @@ func (m *Memory) CPURead(addr uint16) byte {
 
 	} else if addr >= 0x4020 {
 		// Cartridge
-		return m.cartridge.CPURead(addr)
+		return c.cartridge.CPURead(addr)
 
 	}
 	panic(fmt.Sprintf("unhandled cpu memory read from address %#x", addr))
 }
 
-func (m *Memory) CPUWrite(addr uint16, val byte) {
+func (c *Console) CPUWrite(addr uint16, val byte) {
 	if addr < 0x2000 {
-		m.ram[addr&(internalRAMSize-1)] = val
+		c.ram[addr&(internalRAMSize-1)] = val
 
 	} else if addr >= 0x2000 && addr < 0x4000 {
-		m.ppu.WriteReg(byte(addr&0x8), val)
+		c.ppu.WriteReg(byte(addr&0x8), val)
 
 	} else if addr == 0x4014 {
 		// OAM DMA
 		oamData := make([]byte, 256)
 		srcAddr := uint16(val) << 8
 		for i := range oamData {
-			oamData[i] = m.CPURead(srcAddr)
+			oamData[i] = c.CPURead(srcAddr)
 			srcAddr++
 		}
-		m.ppu.OAMDMA(oamData)
-		m.cpu.Sleep(513)
-		if m.cpu.Cycles()%2 == 1 {
-			m.cpu.Sleep(1)
+		c.ppu.OAMDMA(oamData)
+		c.cpu.Sleep(513)
+		if c.cpu.Cycles()%2 == 1 {
+			c.cpu.Sleep(1)
 		}
 
 	} else if addr >= 0x4000 && addr < 0x4020 {
 
 	} else if addr >= 0x4020 {
-		m.cartridge.CPUWrite(addr, val)
+		c.cartridge.CPUWrite(addr, val)
 
 	} else {
 		panic(fmt.Sprintf("unhandled cpu memory write to address %#x", addr))
 	}
 }
 
-func (m *Memory) PPURead(addr uint16, vram []byte) byte {
+func (c *Console) PPURead(addr uint16, vram []byte) byte {
 	// PPU memory is custom mapped by the cartridge
-	return m.cartridge.PPURead(addr, vram)
+	return c.cartridge.PPURead(addr, vram)
 }
 
-func (m *Memory) PPUWrite(addr uint16, val byte, vram []byte) {
+func (c *Console) PPUWrite(addr uint16, val byte, vram []byte) {
 	panic("not implemented")
 }
 
-func (m *Memory) NMI() {
-	m.cpu.NMI()
+func (c *Console) NMI() {
+	c.cpu.NMI()
 }
 
-func (m *Memory) IRQ() {
-	m.cpu.IRQ()
+func (c *Console) IRQ() {
+	c.cpu.IRQ()
 }
 
 type cpuMemory struct {
-	*Memory
+	*Console
 }
 
-func (m *cpuMemory) Read(addr uint16) byte {
-	return m.CPURead(addr)
+func (c *cpuMemory) Read(addr uint16) byte {
+	return c.CPURead(addr)
 }
 
-func (m *cpuMemory) Write(addr uint16, val byte) {
-	m.CPUWrite(addr, val)
+func (c *cpuMemory) Write(addr uint16, val byte) {
+	c.CPUWrite(addr, val)
 }
 
 type ppuMemory struct {
-	*Memory
+	*Console
 }
 
 func (p *ppuMemory) Read(addr uint16, vram []byte) byte {

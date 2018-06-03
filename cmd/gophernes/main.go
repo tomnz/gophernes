@@ -13,6 +13,7 @@ import (
 var (
 	rom    = flag.String("rom", "", "ROM file to load")
 	cycles = flag.Uint64("cycles", 0, "If non-zero, run for a limited number of master clock cycles")
+	rate   = flag.Float64("rate", 1.0, "Emulation rate - 1.0 runs at normal speed or slower, 0 runs without any delays")
 
 	cputrace = flag.Bool("cputrace", false, "Include the CPU trace")
 	pputrace = flag.Bool("pputrace", false, "Include the PPU trace")

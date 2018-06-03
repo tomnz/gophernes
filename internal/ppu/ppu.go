@@ -42,7 +42,6 @@ type PPU struct {
 	oam  []byte
 
 	regs    Registers
-	flags   flags
 	portBus byte
 
 	// addrLatch is used to funnel writes to the Scroll and Address registers
@@ -52,9 +51,16 @@ type PPU struct {
 	nmiOccurred,
 	nmiPrevious bool
 
-	evenFrame bool
-	scanLine  int
+	frames uint64
+	scanLine,
 	lineCycle int
+
+	vramAddr,
+	vramTempAddr uint16
+}
+
+func (p *PPU) Reset() {
+	// TODO: Reset sequence
 }
 
 const clockDivisor = 4
@@ -73,6 +79,10 @@ func (p *PPU) Run(ctx context.Context, clock <-chan struct{}) {
 			}
 		}
 	}
+}
+
+func (p *PPU) Frames() uint64 {
+	return p.frames
 }
 
 func (p *PPU) step() {
@@ -110,15 +120,12 @@ func (p *PPU) stepScan() {
 		p.scanLine++
 		if p.scanLine > 261 {
 			p.scanLine = 0
-			p.evenFrame = !p.evenFrame
-			if !p.evenFrame {
+			p.frames++
+			if p.frames%2 == 1 {
 				p.lineCycle = 1
 			}
 		}
 	}
-}
-
-type flags struct {
 }
 
 func (p *PPU) triggerNMI() {
