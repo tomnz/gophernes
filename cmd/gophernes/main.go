@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"os"
+	"runtime/pprof"
 
 	"github.com/sirupsen/logrus"
 	"github.com/tomnz/gophernes"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
+	"runtime"
 )
 
 var (
@@ -17,16 +19,30 @@ var (
 
 	cputrace = flag.Bool("cputrace", false, "Include the CPU trace")
 	pputrace = flag.Bool("pputrace", false, "Include the PPU trace")
+
+	cpuprofile = flag.String("cpuprofile", "", "Write host CPU profile to this file")
+	memprofile = flag.String("memprofile", "", "Write host memory profile to this file")
 )
 
 func main() {
 	flag.Parse()
 	if *rom == "" {
-		logrus.Fatalf("must specify rom file")
+		logrus.Fatalf("Must specify rom file!")
 	}
 	romFile, err := os.Open(*rom)
 	if os.IsNotExist(err) {
-		logrus.Fatalf("rom file not found: %q", *rom)
+		logrus.Fatalf("ROM file not found: %q", *rom)
+	}
+
+	if *cpuprofile != "" {
+		cpuFile, err := os.Create(*cpuprofile)
+		if err != nil {
+			logrus.Fatalf("Could not create host CPU profile file: %q", *cpuprofile)
+		}
+		if err := pprof.StartCPUProfile(cpuFile); err != nil {
+			logrus.Fatalf("Could not start CPU profile: %s", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	cpuopts := []cpu.Option{
@@ -38,7 +54,7 @@ func main() {
 
 	logrus.SetLevel(logrus.DebugLevel)
 
-	console, err := gophernes.NewConsole(romFile, cpuopts, ppuopts)
+	console, err := gophernes.NewConsole(romFile, cpuopts, ppuopts, gophernes.WithRate(*rate))
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -46,5 +62,17 @@ func main() {
 		console.RunCycles(*cycles)
 	} else {
 		console.Run()
+	}
+
+	if *memprofile != "" {
+		memFile, err := os.Create(*memprofile)
+		if err != nil {
+			logrus.Fatalf("Could not create host memory profile file: %q", *memprofile)
+		}
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(memFile); err != nil {
+			logrus.Fatalf("Could not start memory profile: %s", err)
+		}
+		memFile.Close()
 	}
 }

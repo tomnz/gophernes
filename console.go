@@ -69,12 +69,13 @@ func (c *Console) Run() {
 		}
 		if clock%ppuClockDivisor == 0 {
 			c.ppu.Step()
+			currFrames := c.ppu.Frames()
+			if frames != currFrames {
+				frames = currFrames
+				c.frameWait(startTime, frames)
+			}
 		}
 		clock++
-		if frames != c.ppu.Frames() {
-			frames = c.ppu.Frames()
-			c.frameWait(startTime, frames)
-		}
 	}
 }
 
@@ -82,23 +83,28 @@ func (c *Console) RunCycles(cycles uint64) {
 	startTime := time.Now()
 	var clock, frames uint64
 
-	for i := uint64(0); i < cycles; i++ {
+	for clock < cycles {
 		if clock%cpuClockDivisor == 0 {
 			c.cpu.Step()
 		}
 		if clock%ppuClockDivisor == 0 {
 			c.ppu.Step()
+			currFrames := c.ppu.Frames()
+			if frames != currFrames {
+				frames = currFrames
+				c.frameWait(startTime, frames)
+			}
 		}
 		clock++
-		if frames != c.ppu.Frames() {
-			frames = c.ppu.Frames()
-			c.frameWait(startTime, frames)
-		}
 	}
 }
 
 func (c *Console) frameWait(startTime time.Time, frames uint64) {
-	expected := startTime.Add(time.Duration(float64(time.Second) * frameTime * float64(frames)))
+	if c.config.rate <= 0 {
+		return
+	}
+	expected := startTime.Add(time.Duration(
+		float64(time.Second) * frameTime * float64(frames) / c.config.rate))
 	sleepDuration := expected.Sub(time.Now())
 	logrus.Debugf("%s", sleepDuration)
 	time.Sleep(sleepDuration)

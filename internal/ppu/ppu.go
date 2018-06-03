@@ -67,11 +67,11 @@ func (p *PPU) Frames() uint64 {
 }
 
 func (p *PPU) Step() {
-	defer func() { p.cycles++ }()
-
 	p.stepNMI()
 
 	p.stepScan()
+
+	p.cycles++
 }
 
 func (p *PPU) stepNMI() {
@@ -145,6 +145,7 @@ func (p *PPU) ReadReg(reg byte) byte {
 		// TODO: Handle reads during renderEnable correctly?
 		val = p.vram[p.regs.VRAMAddr]
 		p.regs.VRAMAddr += p.regs.VRAMAddressIncrement
+		p.regs.VRAMAddr %= internalVRAMSize
 
 	// Write-only registers just return the current bus value
 	case regController, regMask, regOAMAddress, regScroll, regAddress:

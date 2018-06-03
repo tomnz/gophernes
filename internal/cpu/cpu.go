@@ -16,7 +16,7 @@ func NewCPU(mem Memory, opts ...Option) *CPU {
 
 	cpu := &CPU{
 		config:  config,
-		opQueue: make([]func(), 0),
+		opQueue: &opQueue{},
 		mem:     mem,
 	}
 	cpu.initInstructions()
@@ -35,7 +35,7 @@ type CPU struct {
 	cycles uint64
 	// Operations to perform for the next cycles - the next instruction is executed when
 	// this is exhausted
-	opQueue []func()
+	opQueue *opQueue
 	insts   [256]*inst
 	mem     Memory
 	regs    Registers
@@ -134,7 +134,7 @@ func (c *CPU) RunTilHalt() uint64 {
 
 func (c *CPU) Sleep(cycles uint64) {
 	for i := uint64(0); i < cycles; i++ {
-		c.opQueue = append(c.opQueue, nil)
+		c.opQueue.push(nil)
 	}
 }
 
@@ -154,9 +154,8 @@ func (c *CPU) Step() {
 	if c.halted {
 		panic("cpu halted")
 	}
-	defer func() { c.cycles++ }()
 
-	if len(c.opQueue) == 0 {
+	if c.opQueue.empty() {
 		if c.shouldNMI {
 			// TODO: Concurrent interrupt behavior
 			c.nmi()
@@ -187,15 +186,15 @@ func (c *CPU) Step() {
 				c.Sleep(cycles - 1)
 			}
 			// TODO: More advanced/correct behavior than just running the op at the end
-			c.opQueue = append(c.opQueue, op)
+			c.opQueue.push(op)
 		}
 	}
 
-	nextOp := c.opQueue[0]
+	nextOp := c.opQueue.pop()
 	if nextOp != nil {
 		nextOp()
 	}
-	c.opQueue = c.opQueue[1:]
+	c.cycles++
 }
 
 func (c *CPU) nmi() {
