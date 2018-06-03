@@ -8,8 +8,8 @@ import (
 const (
 	internalVRAMSize = 0x800
 	oamSize          = 0x100
-	displayW         = 256
-	displayH         = 240
+	DisplayWidth     = 256
+	DisplayHeight    = 240
 )
 
 func NewPPU(mem Memory, opts ...Option) *PPU {
@@ -77,8 +77,8 @@ type PPU struct {
 	spriteIndexes    [8]byte
 
 	// Display buffers
-	backBuffer  [displayH][displayW]byte
-	frontBuffer [displayH][displayW]byte
+	backBuffer  [DisplayHeight][DisplayWidth]byte
+	frontBuffer [DisplayHeight][DisplayWidth]byte
 }
 
 func (p *PPU) Reset() {
@@ -87,6 +87,10 @@ func (p *PPU) Reset() {
 
 func (p *PPU) Frames() uint64 {
 	return p.frames
+}
+
+func (p *PPU) Buffer() [DisplayHeight][DisplayWidth]byte {
+	return p.frontBuffer
 }
 
 func (p *PPU) incrementX() {

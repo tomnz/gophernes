@@ -2,14 +2,17 @@ package main
 
 import (
 	"flag"
+	"image"
 	"os"
+	"runtime"
 	"runtime/pprof"
+	"sync"
 
+	"github.com/hajimehoshi/ebiten"
 	"github.com/sirupsen/logrus"
 	"github.com/tomnz/gophernes"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
-	"runtime"
 )
 
 var (
@@ -24,6 +27,26 @@ var (
 	cpuprofile = flag.String("cpuprofile", "", "Write host CPU profile to this file")
 	memprofile = flag.String("memprofile", "", "Write host memory profile to this file")
 )
+
+var (
+	lastFrame   *image.RGBA
+	lastFrameMu sync.Mutex
+)
+
+func update(screen *ebiten.Image) error {
+	lastFrameMu.Lock()
+	defer lastFrameMu.Unlock()
+	if lastFrame != nil {
+		return screen.ReplacePixels(lastFrame.Pix)
+	}
+	return nil
+}
+
+func draw(frame *image.RGBA) {
+	lastFrameMu.Lock()
+	defer lastFrameMu.Unlock()
+	lastFrame = frame
+}
 
 func main() {
 	flag.Parse()
@@ -55,16 +78,29 @@ func main() {
 
 	logrus.SetLevel(logrus.DebugLevel)
 
-	console, err := gophernes.NewConsole(romFile, cpuopts, ppuopts, gophernes.WithRate(*rate))
+	console, err := gophernes.NewConsole(
+		romFile,
+		cpuopts,
+		ppuopts,
+		gophernes.WithRate(*rate),
+		gophernes.WithDraw(draw),
+	)
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	if *frames != 0 {
-		console.RunFrames(*frames)
-	} else if *cycles != 0 {
-		console.RunCycles(*cycles)
-	} else {
-		console.Run()
+
+	go func(console *gophernes.Console) {
+		if *frames != 0 {
+			console.RunFrames(*frames)
+		} else if *cycles != 0 {
+			console.RunCycles(*cycles)
+		} else {
+			console.Run()
+		}
+	}(console)
+
+	if err := ebiten.Run(update, ppu.DisplayWidth, ppu.DisplayHeight, 1, "NES"); err != nil {
+		logrus.Fatal(err)
 	}
 
 	if *memprofile != "" {

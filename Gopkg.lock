@@ -2,10 +2,40 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/go-gl/gl"
+  packages = ["v2.1/gl"]
+  revision = "68e2537930806bfcee1b92a0e14b4e9b8bb3a3e3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-gl/glfw"
+  packages = ["v3.2/glfw"]
+  revision = "46a8d530c3268b31eeb1310f30fe42be1cae98f2"
+
+[[projects]]
   name = "github.com/google/go-cmp"
   packages = ["cmp","cmp/internal/diff","cmp/internal/function","cmp/internal/value"]
   revision = "3af367b6b30c263d47e8895973edcca9a49cf029"
   version = "v0.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gopherjs/gopherjs"
+  packages = ["js"]
+  revision = "8dffc02ea1cb8398bb73f30424697c60fcf8d4c5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gopherjs/webgl"
+  packages = ["."]
+  revision = "39bd6d41eeb587730fcaa65adf71978fb10675bc"
+
+[[projects]]
+  name = "github.com/hajimehoshi/ebiten"
+  packages = [".","internal","internal/affine","internal/clock","internal/devicescale","internal/graphics","internal/graphicsutil","internal/hooks","internal/input","internal/jni","internal/math","internal/opengl","internal/packing","internal/png","internal/restorable","internal/shareable","internal/ui","internal/web"]
+  revision = "802f62c410c0fa2e93bcf33a98e2bc855af5c506"
+  version = "v1.7.0"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -21,13 +51,37 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/exp"
+  packages = ["shiny/driver/gldriver","shiny/driver/internal/drawer","shiny/driver/internal/errscreen","shiny/driver/internal/event","shiny/driver/internal/lifecycler","shiny/driver/internal/win32","shiny/driver/internal/x11key","shiny/screen"]
+  revision = "d20ef58a6d3868bfe9617c393f93ed4547fee7ff"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/image"
+  packages = ["math/f64"]
+  revision = "af66defab954cb421ca110193eed9477c8541e2a"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/mobile"
+  packages = ["app","app/internal/callfn","event/key","event/lifecycle","event/mouse","event/paint","event/size","event/touch","geom","gl","internal/mobileinit"]
+  revision = "5665cf37628bb651a12968646808b67661ad9afb"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
   revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/tools"
+  packages = ["go/ast/astutil"]
+  revision = "a5b4c53f6e8bdcafa95a94671bf2d1203365858b"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a11e0b238e8e91b7f42af65f3b89d7dff5e663393af97ae3454f810848df2ef1"
+  inputs-digest = "2deff16ea5a55359809dacf53b554d9c626f2c9e76cde4d1887bccccd8e5e396"
   solver-name = "gps-cdcl"
   solver-version = 1

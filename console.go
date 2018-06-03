@@ -7,6 +7,7 @@ import (
 	"github.com/tomnz/gophernes/internal/cartridge"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
+	"image"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type Console struct {
 	ram       []byte
 	cpu       *cpu.CPU
 	ppu       *ppu.PPU
+	img       *image.RGBA
 	cartridge cartridge.Cartridge
 }
 
@@ -39,6 +41,7 @@ func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, opts 
 	console := &Console{
 		config:    config,
 		ram:       make([]byte, internalRAMSize),
+		img:       image.NewRGBA(image.Rect(0, 0, ppu.DisplayWidth, ppu.DisplayHeight)),
 		cartridge: cartridge,
 	}
 
@@ -72,7 +75,7 @@ func (c *Console) Run() {
 			currFrames := c.ppu.Frames()
 			if frames != currFrames {
 				frames = currFrames
-				c.frameWait(startTime, frames)
+				c.handleFrame(startTime, frames)
 			}
 		}
 		clock++
@@ -92,7 +95,7 @@ func (c *Console) RunFrames(frames uint64) {
 			nextFrames := c.ppu.Frames()
 			if currFrames != nextFrames {
 				currFrames = nextFrames
-				c.frameWait(startTime, currFrames)
+				c.handleFrame(startTime, currFrames)
 			}
 		}
 		clock++
@@ -112,14 +115,18 @@ func (c *Console) RunCycles(cycles uint64) {
 			currFrames := c.ppu.Frames()
 			if frames != currFrames {
 				frames = currFrames
-				c.frameWait(startTime, frames)
+				c.handleFrame(startTime, frames)
 			}
 		}
 		clock++
 	}
 }
 
-func (c *Console) frameWait(startTime time.Time, frames uint64) {
+func (c *Console) handleFrame(startTime time.Time, frames uint64) {
+	if c.config.draw != nil {
+		c.drawFrame()
+		c.config.draw(c.img)
+	}
 	if c.config.rate <= 0 {
 		return
 	}
@@ -128,4 +135,13 @@ func (c *Console) frameWait(startTime time.Time, frames uint64) {
 	sleepDuration := expected.Sub(time.Now())
 	logrus.Debugf("%s", sleepDuration)
 	time.Sleep(sleepDuration)
+}
+
+func (c *Console) drawFrame() {
+	buf := c.ppu.Buffer()
+	for y, row := range buf {
+		for x, val := range row {
+			c.img.Set(x, y, c.config.palette[val])
+		}
+	}
 }
