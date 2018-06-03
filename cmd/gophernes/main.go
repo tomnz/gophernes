@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	rom = flag.String("rom", "", "ROM file to load")
+	rom   = flag.String("rom", "", "ROM file to load")
+	steps = flag.Int("steps", 0, "If non-zero, run for a limited number of CPU operations")
 )
 
 func main() {
@@ -24,5 +25,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	console.Run()
+	if *steps != 0 {
+		err = console.RunSteps(*steps)
+	} else {
+		err = console.Run()
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -28,16 +28,16 @@ type nrom struct {
 }
 
 func (n *nrom) CPURead(addr uint16) byte {
-	if addr >= 0x8000 && addr < 0xFFFF {
+	if addr >= 0x8000 && addr <= 0xFFFF {
 		return n.prg[addr&n.prgMask]
 	}
 	// TODO: PRG RAM? Only used for Family BASIC
-	panic(fmt.Sprintf("unhandled memory read from address %#x", addr))
+	panic(fmt.Sprintf("unhandled NROM memory read from address %#x", addr))
 }
 
 func (n *nrom) CPUWrite(addr uint16, val byte) {
 	// TODO: PRG RAM? Only used for Family BASIC
-	panic(fmt.Sprintf("unhandled memory write to address %#x", addr))
+	panic(fmt.Sprintf("unhandled NROM memory write to address %#x", addr))
 }
 
 func (n *nrom) PPURead(addr uint16, vram []byte) byte {

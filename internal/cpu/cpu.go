@@ -35,6 +35,7 @@ type CPU struct {
 	mem    Memory
 	regs   Registers
 	flags  Flags
+	nmi    bool
 	halted bool
 }
 
@@ -83,6 +84,10 @@ func (c *CPU) Registers() Registers {
 
 func (c *CPU) Flags() Flags {
 	return c.flags
+}
+
+func (c *CPU) NMI() {
+	c.nmi = true
 }
 
 func (c *CPU) setFlagsFromByte(flags byte) {
@@ -143,11 +148,19 @@ func (c *CPU) step() (uint64, error) {
 	if c.halted {
 		return 0, ErrHalted
 	}
+
+	if !c.flags.InterruptDisable && c.nmi {
+		c.interrupt()
+		c.cycles += 7
+		c.nmi = false
+	}
+
 	opCode := c.prgRead8()
 	inst := c.insts[opCode]
 
 	if c.config.trace {
 		// TODO: Better tracing! Let's store this as objects instead of logging
+		log.Printf("PC: %#x", c.pc)
 		log.Printf("Op: %s", inst.fullName())
 	}
 	addr, cross := c.resolve(inst.addressMode)
@@ -159,6 +172,12 @@ func (c *CPU) step() (uint64, error) {
 	}
 	c.cycles += cycles
 	return cycles, nil
+}
+
+func (c *CPU) interrupt() {
+	c.stackPush16(c.pc - 1)
+	c.stackPush8(c.flags.asByte())
+	c.pc = c.read16(irqVector)
 }
 
 func (c *CPU) branch(offset uint16) {
@@ -176,7 +195,7 @@ func (c *CPU) compare(a, b byte) {
 	diff := a - b
 	c.flags.Carry = a >= b
 	c.flags.Zero = diff == 0
-	c.flags.Negative = (diff>>7)&0x1 == 1
+	c.flags.Negative = (diff>>7)&1 == 1
 }
 
 func (c *CPU) prgRead8() byte {

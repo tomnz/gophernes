@@ -685,9 +685,7 @@ func sei(cpu *CPU, addr uint16, mode AddressMode) {
 // System Functions
 
 func brk(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.stackPush16(cpu.pc)
-	cpu.stackPush8(cpu.flags.asByte())
-	cpu.pc = cpu.read16(irqVector)
+	cpu.interrupt()
 	// TODO: Should this set InterruptDisable instead?
 	cpu.flags.BreakCmd = true
 }

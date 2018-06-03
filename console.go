@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/tomnz/gophernes/internal/cpu"
+	"github.com/tomnz/gophernes/internal/ppu"
 )
 
 // Console implements the main console.
@@ -18,12 +19,13 @@ func NewConsole(rom io.Reader) (*Console, error) {
 	if err != nil {
 		return nil, err
 	}
-	memory := &Memory{
-		cartridge: cartridge,
-	}
+	memory := NewMemory(cartridge)
 
 	cpu := cpu.NewCPU(&cpuMemory{memory}, cpu.WithTrace())
 	memory.cpu = cpu
+
+	ppu := ppu.NewPPU(&ppuMemory{memory}, ppu.WithTrace())
+	memory.ppu = ppu
 
 	cpu.Reset()
 
@@ -35,5 +37,10 @@ func NewConsole(rom io.Reader) (*Console, error) {
 
 func (c *Console) Run() error {
 	_, err := c.cpu.RunTilHalt()
+	return err
+}
+
+func (c *Console) RunSteps(steps int) error {
+	_, err := c.cpu.Run(steps)
 	return err
 }
