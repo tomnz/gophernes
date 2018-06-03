@@ -79,6 +79,26 @@ func (c *Console) Run() {
 	}
 }
 
+func (c *Console) RunFrames(frames uint64) {
+	startTime := time.Now()
+	var clock, currFrames uint64
+
+	for currFrames <= frames {
+		if clock%cpuClockDivisor == 0 {
+			c.cpu.Step()
+		}
+		if clock%ppuClockDivisor == 0 {
+			c.ppu.Step()
+			nextFrames := c.ppu.Frames()
+			if currFrames != nextFrames {
+				currFrames = nextFrames
+				c.frameWait(startTime, currFrames)
+			}
+		}
+		clock++
+	}
+}
+
 func (c *Console) RunCycles(cycles uint64) {
 	startTime := time.Now()
 	var clock, frames uint64

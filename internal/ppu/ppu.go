@@ -8,6 +8,8 @@ import (
 const (
 	internalVRAMSize = 0x800
 	oamSize          = 0x100
+	displayW         = 256
+	displayH         = 240
 )
 
 func NewPPU(mem Memory, opts ...Option) *PPU {
@@ -36,9 +38,10 @@ type PPU struct {
 	config *config
 	cycles uint64
 
-	mem  Memory
-	vram []byte
-	oam  []byte
+	mem         Memory
+	vram        []byte
+	oam         []byte
+	paletteData [32]byte
 
 	regs    Registers
 	portBus byte
@@ -54,8 +57,28 @@ type PPU struct {
 
 	vramAddr,
 	vramTempAddr uint16
+	fineX byte
 	// addrLatch is used to funnel writes to the Scroll and Address registers
-	addrLatch bool
+	addrLatch    bool
+	bufferedData byte
+
+	// Background data
+	nameTableByte,
+	attributeTableByte,
+	lowTileByte,
+	highTileByte byte
+	tileData uint64
+
+	// Sprite data
+	spriteCount      int
+	spritePatterns   [8]uint32
+	spritePositions  [8]byte
+	spritePriorities [8]byte
+	spriteIndexes    [8]byte
+
+	// Display buffers
+	backBuffer  [displayH][displayW]byte
+	frontBuffer [displayH][displayW]byte
 }
 
 func (p *PPU) Reset() {
@@ -64,45 +87,6 @@ func (p *PPU) Reset() {
 
 func (p *PPU) Frames() uint64 {
 	return p.frames
-}
-
-func (p *PPU) Step() {
-	// Perform the vertical blank handling as needed
-	p.stepNMI()
-
-	renderEnabled := p.regs.ShowBackground || p.regs.ShowSprites
-
-	if renderEnabled {
-		if p.lineCycle >= 1 && p.lineCycle <= 256 {
-			switch p.lineCycle % 8 {
-			case 1:
-				p.readNametable()
-			}
-			if p.lineCycle == 256 {
-				p.incrementY()
-			} else if p.lineCycle%8 == 0 {
-				p.incrementX()
-			}
-
-		} else if p.lineCycle == 257 {
-			p.resetX()
-		}
-
-		if p.scanLine == 261 {
-			if p.lineCycle >= 280 && p.lineCycle <= 304 {
-				p.resetY()
-			}
-		}
-	}
-
-	// Move to the next cell/scanline as needed
-	p.stepScan()
-
-	p.cycles++
-}
-
-func (p *PPU) readNametable() {
-	p.read8(p.vramAddr)
 }
 
 func (p *PPU) incrementX() {
@@ -144,10 +128,10 @@ func (p *PPU) resetY() {
 
 func (p *PPU) stepNMI() {
 	if p.scanLine == 241 && p.lineCycle == 1 {
-		p.triggerNMI()
+		p.triggerVertBlank()
 	}
 	if p.scanLine == 261 && p.lineCycle == 1 {
-		p.resetNMI()
+		p.clearVertBlank()
 		p.sprite0Hit = false
 		p.spriteOverflow = false
 	}
@@ -177,11 +161,12 @@ func (p *PPU) stepScan() {
 	}
 }
 
-func (p *PPU) triggerNMI() {
+func (p *PPU) triggerVertBlank() {
 	p.nmiOccurred = true
+	p.frontBuffer, p.backBuffer = p.backBuffer, p.frontBuffer
 }
 
-func (p *PPU) resetNMI() {
+func (p *PPU) clearVertBlank() {
 	p.nmiOccurred = false
 	p.nmiPrevious = false
 }
@@ -202,7 +187,7 @@ func (p *PPU) ReadReg(reg byte) byte {
 			val |= 1 << 7
 		}
 		// Resets NMI flag as a side effect
-		p.resetNMI()
+		p.clearVertBlank()
 		// Resets address latch as a side effect
 		p.addrLatch = false
 
@@ -211,9 +196,16 @@ func (p *PPU) ReadReg(reg byte) byte {
 
 	case regData:
 		// TODO: Handle reads during renderEnable correctly?
-		val = p.vram[p.regs.VRAMAddr]
-		p.regs.VRAMAddr += p.regs.VRAMAddressIncrement
-		p.regs.VRAMAddr %= internalVRAMSize
+		val = p.read8(p.vramAddr)
+		if p.vramAddr%0x4000 < 0x3F00 {
+			buffered := p.bufferedData
+			p.bufferedData = val
+			val = buffered
+		} else {
+			p.bufferedData = p.read8(p.vramAddr - 0x1000)
+		}
+		p.vramAddr += p.regs.VRAMAddressIncrement
+		// p.vramAddr %= internalVRAMSize
 
 	// Write-only registers just return the current bus value
 	case regController, regMask, regOAMAddress, regScroll, regAddress:
@@ -284,25 +276,28 @@ func (p *PPU) WriteReg(reg byte, val byte) {
 
 	case regScroll:
 		if !p.addrLatch {
-			p.regs.ScrollX = val
+			p.vramTempAddr = (p.vramTempAddr & 0xFFE0) | (uint16(val) >> 3)
+			p.fineX = val & 0x7
 		} else {
 			// TODO: Handle values higher than 239 correctly
-			p.regs.ScrollY = val
+			p.vramTempAddr = (p.vramTempAddr & 0x8FFF) | ((uint16(val) & 0x7) << 12)
+			p.vramTempAddr = (p.vramTempAddr & 0xFC1F) | ((uint16(val) & 0xF8) << 2)
 		}
 		p.addrLatch = !p.addrLatch
 
 	case regAddress:
 		if !p.addrLatch {
-			p.regs.VRAMAddr = (uint16(val) << 8) | (p.regs.VRAMAddr & 0xFF)
+			p.vramTempAddr = (p.vramTempAddr & 0x80FF) | ((uint16(val) & 0x3F) << 8)
 		} else {
-			p.regs.VRAMAddr = uint16(val) | (p.regs.VRAMAddr & 0xFF00)
+			p.vramTempAddr = (p.vramTempAddr & 0xFF00) | uint16(val)
+			p.vramAddr = p.vramTempAddr
 		}
 		p.addrLatch = !p.addrLatch
 
 	case regData:
 		// TODO: Handle writes during renderEnable correctly?
-		p.vram[p.regs.VRAMAddr] = val
-		p.regs.VRAMAddr += p.regs.VRAMAddressIncrement
+		p.write8(p.vramAddr, val)
+		p.vramAddr += p.regs.VRAMAddressIncrement
 
 	default:
 		panic(fmt.Sprintf("write to unknown PPU register %#x", reg))

@@ -15,6 +15,7 @@ import (
 var (
 	rom    = flag.String("rom", "", "ROM file to load")
 	cycles = flag.Uint64("cycles", 0, "If non-zero, run for a limited number of master clock cycles")
+	frames = flag.Uint64("frames", 0, "If non-zero, run for a limited number of frames")
 	rate   = flag.Float64("rate", 1.0, "Emulation rate - 1.0 runs at normal speed or slower, 0 runs without any delays")
 
 	cputrace = flag.Bool("cputrace", false, "Include the CPU trace")
@@ -58,7 +59,9 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	if *cycles != 0 {
+	if *frames != 0 {
+		console.RunFrames(*frames)
+	} else if *cycles != 0 {
 		console.RunCycles(*cycles)
 	} else {
 		console.Run()

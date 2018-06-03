@@ -42,9 +42,4 @@ type Registers struct {
 	EmphasizeBlue bool
 	// OAM Address
 	OAMAddr byte
-	// Scroll
-	ScrollX,
-	ScrollY byte
-	// VRAM Address
-	VRAMAddr uint16
 }

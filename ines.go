@@ -61,7 +61,7 @@ func loadINES(file io.Reader) (cartridge.Cartridge, error) {
 		// Special case - provide an empty block
 		chr = make([]byte, 8192)
 	} else {
-		chr := make([]byte, chrLenMultiplier*int(header.ChrLen))
+		chr = make([]byte, chrLenMultiplier*int(header.ChrLen))
 		if _, err := io.ReadFull(file, chr); err != nil {
 			return nil, err
 		}
