@@ -12,8 +12,8 @@ func defaultConfig() *config {
 
 type Option func(*config)
 
-func WithTrace() Option {
+func WithTrace(trace bool) Option {
 	return func(config *config) {
-		config.trace = true
+		config.trace = trace
 	}
 }

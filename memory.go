@@ -40,7 +40,7 @@ func (m *Memory) CPURead(addr uint16) byte {
 	} else if addr >= 0x4000 && addr < 0x4020 {
 		// Memory-mapped registers
 		switch addr & 0x1F {
-
+		// TODO: Handle more of these
 		}
 		return 0
 
@@ -67,7 +67,13 @@ func (m *Memory) CPUWrite(addr uint16, val byte) {
 			oamData[i] = m.CPURead(srcAddr)
 			srcAddr++
 		}
-		m.ppu.CopyOAM(oamData)
+		m.ppu.OAMDMA(oamData)
+		m.cpu.Sleep(513)
+		if m.cpu.Cycles()%2 == 1 {
+			m.cpu.Sleep(1)
+		}
+
+	} else if addr >= 0x4000 && addr < 0x4020 {
 
 	} else if addr >= 0x4020 {
 		m.cartridge.CPUWrite(addr, val)
@@ -84,6 +90,14 @@ func (m *Memory) PPURead(addr uint16, vram []byte) byte {
 
 func (m *Memory) PPUWrite(addr uint16, val byte, vram []byte) {
 	panic("not implemented")
+}
+
+func (m *Memory) NMI() {
+	m.cpu.NMI()
+}
+
+func (m *Memory) IRQ() {
+	m.cpu.IRQ()
 }
 
 type cpuMemory struct {

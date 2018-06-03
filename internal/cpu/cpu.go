@@ -1,8 +1,10 @@
 package cpu
 
 import (
+	"context"
 	"errors"
-	"log"
+
+	"github.com/sirupsen/logrus"
 )
 
 var ErrHalted = errors.New("cpu halted")
@@ -14,8 +16,9 @@ func NewCPU(mem Memory, opts ...Option) *CPU {
 	}
 
 	cpu := &CPU{
-		config: config,
-		mem:    mem,
+		config:  config,
+		opQueue: make([]func(), 0),
+		mem:     mem,
 	}
 	cpu.initInstructions()
 	return cpu
@@ -31,11 +34,15 @@ type CPU struct {
 	config *config
 	pc     uint16
 	cycles uint64
-	insts  [256]*inst
-	mem    Memory
-	regs   Registers
-	flags  Flags
-	nmi    bool
+	// Operations to perform for the next cycles - the next instruction is executed when
+	// this is exhausted
+	opQueue []func()
+	insts   [256]*inst
+	mem     Memory
+	regs    Registers
+	flags   Flags
+	shouldNMI,
+	shouldIRQ bool
 	halted bool
 }
 
@@ -86,10 +93,6 @@ func (c *CPU) Flags() Flags {
 	return c.flags
 }
 
-func (c *CPU) NMI() {
-	c.nmi = true
-}
-
 func (c *CPU) setFlagsFromByte(flags byte) {
 	c.flags.Negative = (flags>>6)&1 == 1
 	c.flags.Overflow = (flags>>5)&1 == 1
@@ -100,6 +103,7 @@ func (c *CPU) setFlagsFromByte(flags byte) {
 }
 
 const (
+	nmiVector   = uint16(0xFFFA)
 	resetVector = uint16(0xFFFC)
 	irqVector   = uint16(0xFFFE)
 )
@@ -114,20 +118,31 @@ func (c *CPU) Reset() {
 	c.halted = false
 
 	if c.config.trace {
-		log.Printf("Reset CPU to PC %#x", c.pc)
+		logrus.Debugf("CPU: Reset to PC %#x", c.pc)
 	}
 }
 
-func (c *CPU) Run(steps int) (uint64, error) {
-	var cycles uint64
-	for i := 0; i < steps; i++ {
-		stepCycles, err := c.step()
-		cycles += stepCycles
-		if err != nil {
-			return cycles, err
+const clockDivisor = 12
+
+func (c *CPU) Run(ctx context.Context, clock <-chan struct{}) {
+	subCycles := 0
+	cycles := uint64(0)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-clock:
+			subCycles++
+			if subCycles >= clockDivisor {
+				subCycles = 0
+				cycles++
+				_, err := c.step()
+				if err != nil {
+					panic(err)
+				}
+			}
 		}
 	}
-	return cycles, nil
 }
 
 func (c *CPU) RunTilHalt() (uint64, error) {
@@ -144,37 +159,80 @@ func (c *CPU) RunTilHalt() (uint64, error) {
 	}
 }
 
+func (c *CPU) Sleep(cycles uint64) {
+	for i := uint64(0); i < cycles; i++ {
+		c.opQueue = append(c.opQueue, nil)
+	}
+}
+
+func (c *CPU) NMI() {
+	c.shouldNMI = true
+}
+
+func (c *CPU) IRQ() {
+	c.shouldIRQ = true
+}
+
+func (c *CPU) Cycles() uint64 {
+	return c.cycles
+}
+
 func (c *CPU) step() (uint64, error) {
 	if c.halted {
 		return 0, ErrHalted
 	}
+	defer func() { c.cycles++ }()
 
-	if !c.flags.InterruptDisable && c.nmi {
-		c.interrupt()
-		c.cycles += 7
-		c.nmi = false
+	if len(c.opQueue) == 0 {
+		if c.shouldNMI {
+			// TODO: Concurrent interrupt behavior
+			c.nmi()
+			c.Sleep(7)
+			c.shouldNMI = false
+		} else if c.shouldIRQ {
+			c.irq()
+			c.Sleep(7)
+			c.shouldIRQ = false
+		} else {
+			opCode := c.prgRead8()
+			inst := c.insts[opCode]
+
+			if c.config.trace {
+				// TODO: Better tracing! Let's store this as objects instead of logging
+				logrus.Debugf("CPU: PC: %#x", c.pc)
+				logrus.Debugf("CPU: Op: %s", inst.fullName())
+			}
+			addr, cross := c.resolve(inst.addressMode)
+			op := inst.op(c, addr, inst.addressMode)
+
+			cycles := inst.cycles
+			if inst.pageCrossCycle && cross {
+				cycles++
+			}
+
+			if cycles > 0 {
+				c.Sleep(cycles - 1)
+			}
+			// TODO: More advanced/correct behavior than just running the op at the end
+			c.opQueue = append(c.opQueue, op)
+		}
 	}
 
-	opCode := c.prgRead8()
-	inst := c.insts[opCode]
-
-	if c.config.trace {
-		// TODO: Better tracing! Let's store this as objects instead of logging
-		log.Printf("PC: %#x", c.pc)
-		log.Printf("Op: %s", inst.fullName())
+	nextOp := c.opQueue[0]
+	if nextOp != nil {
+		nextOp()
 	}
-	addr, cross := c.resolve(inst.addressMode)
-	inst.op(c, addr, inst.addressMode)
-
-	cycles := inst.cycles
-	if inst.pageCrossCycle && cross {
-		cycles++
-	}
-	c.cycles += cycles
-	return cycles, nil
+	c.opQueue = c.opQueue[1:]
+	return 1, nil
 }
 
-func (c *CPU) interrupt() {
+func (c *CPU) nmi() {
+	c.stackPush16(c.pc - 1)
+	c.stackPush8(c.flags.asByte())
+	c.pc = c.read16(nmiVector)
+}
+
+func (c *CPU) irq() {
 	c.stackPush16(c.pc - 1)
 	c.stackPush8(c.flags.asByte())
 	c.pc = c.read16(irqVector)
@@ -182,12 +240,16 @@ func (c *CPU) interrupt() {
 
 func (c *CPU) branch(offset uint16) {
 	page := c.pc >> 2
-	c.pc += offset
+	if offset < 0x80 {
+		c.pc += offset
+	} else {
+		c.pc += offset - 0x100
+	}
 	// Special case - need to manually add cycles
-	c.cycles++
+	c.Sleep(1)
 	if page != c.pc>>2 {
 		// Page cross
-		c.cycles += 2
+		c.Sleep(2)
 	}
 }
 

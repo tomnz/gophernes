@@ -31,8 +31,6 @@ type Registers struct {
 	BackgroundPatternTableAddress uint16
 	TallSprites,
 	NMIGenerate bool
-	// Status
-	NMIOccurred bool
 	// Mask
 	Grayscale,
 	ShowLeftBackground,

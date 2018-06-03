@@ -1,6 +1,10 @@
 package ppu
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"github.com/sirupsen/logrus"
+)
 
 const (
 	internalVRAMSize = 0x800
@@ -14,10 +18,11 @@ func NewPPU(mem Memory, opts ...Option) *PPU {
 	}
 
 	ppu := &PPU{
-		config: config,
-		mem:    mem,
-		vram:   make([]byte, internalVRAMSize),
-		oam:    make([]byte, oamSize),
+		config:   config,
+		mem:      mem,
+		vram:     make([]byte, internalVRAMSize),
+		oam:      make([]byte, oamSize),
+		scanLine: 261,
 	}
 	return ppu
 }
@@ -25,25 +30,104 @@ func NewPPU(mem Memory, opts ...Option) *PPU {
 type Memory interface {
 	Read(addr uint16, vram []byte) byte
 	Write(addr uint16, val byte, vram []byte)
+	NMI()
 }
 
 type PPU struct {
-	config  *config
-	cycles  uint64
-	mem     Memory
-	vram    []byte
-	oam     []byte
+	config *config
+	cycles uint64
+
+	mem  Memory
+	vram []byte
+	oam  []byte
+
 	regs    Registers
 	flags   flags
 	portBus byte
+
 	// addrLatch is used to funnel writes to the Scroll and Address registers
-	addrLatch bool
-	rendering bool
+	addrLatch,
+	spriteOverflow,
+	sprite0Hit,
+	nmiOccurred,
+	nmiPrevious bool
+
+	evenFrame bool
+	scanLine  int
+	lineCycle int
+}
+
+const clockDivisor = 4
+
+func (p *PPU) Run(ctx context.Context, clock <-chan struct{}) {
+	subCycles := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-clock:
+			subCycles++
+			if subCycles >= clockDivisor {
+				subCycles = 0
+				p.step()
+			}
+		}
+	}
+}
+
+func (p *PPU) step() {
+	defer func() { p.cycles++ }()
+
+	p.stepNMI()
+
+	p.stepScan()
+}
+
+func (p *PPU) stepNMI() {
+	if p.scanLine == 241 && p.lineCycle == 1 {
+		p.triggerNMI()
+	}
+	if p.scanLine == 261 && p.lineCycle == 1 {
+		p.resetNMI()
+		p.sprite0Hit = false
+		p.spriteOverflow = false
+	}
+
+	shouldNMI := p.regs.NMIGenerate && p.nmiOccurred
+	if shouldNMI && !p.nmiPrevious {
+		if p.config.trace {
+			logrus.Debug("PPU: Sending NMI to CPU")
+		}
+		p.mem.NMI()
+	}
+	p.nmiPrevious = shouldNMI
+}
+
+func (p *PPU) stepScan() {
+	p.lineCycle++
+	if p.lineCycle > 340 {
+		p.lineCycle = 0
+		p.scanLine++
+		if p.scanLine > 261 {
+			p.scanLine = 0
+			p.evenFrame = !p.evenFrame
+			if !p.evenFrame {
+				p.lineCycle = 1
+			}
+		}
+	}
 }
 
 type flags struct {
-	spriteOverflow bool
-	sprite0Hit     bool
+}
+
+func (p *PPU) triggerNMI() {
+	p.nmiOccurred = true
+}
+
+func (p *PPU) resetNMI() {
+	p.nmiOccurred = false
+	p.nmiPrevious = false
 }
 
 func (p *PPU) ReadReg(reg byte) byte {
@@ -52,17 +136,17 @@ func (p *PPU) ReadReg(reg byte) byte {
 	case regStatus:
 		// Take bits 0-4 from last written value
 		val = val & 0x1F
-		if p.flags.spriteOverflow {
+		if p.spriteOverflow {
 			val |= 1 << 5
 		}
-		if p.flags.sprite0Hit {
+		if p.sprite0Hit {
 			val |= 1 << 6
 		}
-		if p.regs.NMIOccurred {
+		if p.nmiOccurred {
 			val |= 1 << 7
 		}
 		// Resets NMI flag as a side effect
-		p.regs.NMIOccurred = false
+		p.resetNMI()
 		// Resets address latch as a side effect
 		p.addrLatch = false
 
@@ -70,7 +154,7 @@ func (p *PPU) ReadReg(reg byte) byte {
 		val = p.oam[p.regs.OAMAddr]
 
 	case regData:
-		// TODO: Handle reads during rendering correctly?
+		// TODO: Handle reads during renderEnable correctly?
 		val = p.vram[p.regs.VRAMAddr]
 		p.regs.VRAMAddr += p.regs.VRAMAddressIncrement
 
@@ -139,9 +223,7 @@ func (p *PPU) WriteReg(reg byte, val byte) {
 	case regOAMData:
 		// TODO: Handle "glitchy" writes during rendering?
 		// http://wiki.nesdev.com/w/index.php/PPU_registers
-		if !p.rendering {
-			p.oam[p.regs.OAMAddr] = val
-		}
+		p.oam[p.regs.OAMAddr] = val
 
 	case regScroll:
 		if !p.addrLatch {
@@ -161,7 +243,7 @@ func (p *PPU) WriteReg(reg byte, val byte) {
 		p.addrLatch = !p.addrLatch
 
 	case regData:
-		// TODO: Handle writes during rendering correctly?
+		// TODO: Handle writes during renderEnable correctly?
 		p.vram[p.regs.VRAMAddr] = val
 		p.regs.VRAMAddr += p.regs.VRAMAddressIncrement
 
@@ -170,11 +252,14 @@ func (p *PPU) WriteReg(reg byte, val byte) {
 	}
 }
 
-func (p *PPU) CopyOAM(src []byte) {
+func (p *PPU) OAMDMA(src []byte) {
+	// TODO: Break this up somehow so it happens over multiple clock cycles
 	if len(src) != oamSize {
 		panic("attempted to write OAM data with incorrect number of bytes")
 	}
-	copy(p.oam, src)
+	for i := 0; i < oamSize; i++ {
+		p.oam[(int(p.regs.OAMAddr)+i)%oamSize] = src[i]
+	}
 }
 
 func (p *PPU) read8(addr uint16) byte {

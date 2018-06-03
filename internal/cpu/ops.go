@@ -1,6 +1,6 @@
 package cpu
 
-type op func(cpu *CPU, addr uint16, mode AddressMode)
+type op func(cpu *CPU, addr uint16, mode AddressMode) func()
 
 type inst struct {
 	name           string
@@ -330,381 +330,494 @@ func (c *CPU) setResultFlags(val byte) {
 
 // Load / store Operations
 
-func lda(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.Accumulator = val
-	cpu.setResultFlags(val)
+func lda(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.Accumulator = val
+		cpu.setResultFlags(val)
+	}
 }
 
-func ldx(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.IndexX = val
-	cpu.setResultFlags(val)
+func ldx(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.IndexX = val
+		cpu.setResultFlags(val)
+	}
 }
 
-func ldy(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.IndexY = val
-	cpu.setResultFlags(val)
+func ldy(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.IndexY = val
+		cpu.setResultFlags(val)
+	}
 }
 
-func sta(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.write8(addr, cpu.regs.Accumulator)
+func sta(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.write8(addr, cpu.regs.Accumulator)
+	}
 }
 
-func stx(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.write8(addr, cpu.regs.Accumulator)
+func stx(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.write8(addr, cpu.regs.Accumulator)
+	}
 }
 
-func sty(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.write8(addr, cpu.regs.Accumulator)
+func sty(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.write8(addr, cpu.regs.Accumulator)
+	}
 }
 
 // Register Transfers
 
-func tax(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexX = cpu.regs.Accumulator
-	cpu.setResultFlags(cpu.regs.Accumulator)
+func tax(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexX = cpu.regs.Accumulator
+		cpu.setResultFlags(cpu.regs.Accumulator)
+	}
 }
 
-func tay(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexY = cpu.regs.Accumulator
-	cpu.setResultFlags(cpu.regs.Accumulator)
+func tay(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexY = cpu.regs.Accumulator
+		cpu.setResultFlags(cpu.regs.Accumulator)
+	}
 }
 
-func txa(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.Accumulator = cpu.regs.IndexX
-	cpu.setResultFlags(cpu.regs.IndexX)
+func txa(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.Accumulator = cpu.regs.IndexX
+		cpu.setResultFlags(cpu.regs.IndexX)
+	}
 }
 
-func tya(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.Accumulator = cpu.regs.IndexY
-	cpu.setResultFlags(cpu.regs.IndexY)
+func tya(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.Accumulator = cpu.regs.IndexY
+		cpu.setResultFlags(cpu.regs.IndexY)
+	}
 }
 
 // Stack Operations
 
-func tsx(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexX = cpu.regs.StackPtr
-	cpu.setResultFlags(cpu.regs.StackPtr)
+func tsx(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexX = cpu.regs.StackPtr
+		cpu.setResultFlags(cpu.regs.StackPtr)
+	}
 }
 
-func txs(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.StackPtr = cpu.regs.IndexX
+func txs(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.StackPtr = cpu.regs.IndexX
+	}
 }
 
-func pha(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.stackPush8(cpu.regs.Accumulator)
+func pha(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.stackPush8(cpu.regs.Accumulator)
+	}
 }
 
-func php(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.stackPush8(cpu.flags.asByte())
+func php(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.stackPush8(cpu.flags.asByte())
+	}
 }
 
-func pla(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.stackPull8()
-	cpu.setResultFlags(val)
-	cpu.regs.Accumulator = val
+func pla(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.stackPull8()
+		cpu.setResultFlags(val)
+		cpu.regs.Accumulator = val
+	}
 }
 
-func plp(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.setFlagsFromByte(cpu.stackPull8())
+func plp(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.setFlagsFromByte(cpu.stackPull8())
+	}
 }
 
 // Logical
 
-func and(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.Accumulator &= val
-	cpu.setResultFlags(cpu.regs.Accumulator)
+func and(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.Accumulator &= val
+		cpu.setResultFlags(cpu.regs.Accumulator)
+	}
 }
 
-func eor(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.Accumulator ^= val
-	cpu.setResultFlags(cpu.regs.Accumulator)
+func eor(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.Accumulator ^= val
+		cpu.setResultFlags(cpu.regs.Accumulator)
+	}
 }
 
-func ora(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	cpu.regs.Accumulator |= val
-	cpu.setResultFlags(cpu.regs.Accumulator)
+func ora(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		cpu.regs.Accumulator |= val
+		cpu.setResultFlags(cpu.regs.Accumulator)
+	}
 }
 
-func bit(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	test := val & cpu.regs.Accumulator
-	cpu.flags.Zero = test == 0
-	cpu.flags.Overflow = (val>>6)&0x1 == 1
-	cpu.flags.Negative = (val>>7)&0x1 == 1
+func bit(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		test := val & cpu.regs.Accumulator
+		cpu.flags.Zero = test == 0
+		cpu.flags.Overflow = (val>>6)&0x1 == 1
+		cpu.flags.Negative = (val>>7)&0x1 == 1
+	}
 }
 
 // Arithmetic
 
-func adc(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	accum := cpu.regs.Accumulator
-	var carry byte
-	if cpu.flags.Carry {
-		carry = 1
+func adc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		accum := cpu.regs.Accumulator
+		var carry byte
+		if cpu.flags.Carry {
+			carry = 1
+		}
+		cpu.regs.Accumulator = val + carry + cpu.regs.Accumulator
+		cpu.setFlagsFromByte(cpu.regs.Accumulator)
+		cpu.flags.Carry = uint16(val)+uint16(carry)+uint16(accum) > 0xFF
+		cpu.flags.Overflow = (accum^val)&0x80 == 0 && (val^cpu.regs.Accumulator) != 0
 	}
-	cpu.regs.Accumulator = val + carry + cpu.regs.Accumulator
-	cpu.setFlagsFromByte(cpu.regs.Accumulator)
-	cpu.flags.Carry = uint16(val)+uint16(carry)+uint16(accum) > 0xFF
-	cpu.flags.Overflow = (accum^val)&0x80 == 0 && (val^cpu.regs.Accumulator) != 0
 }
 
-func sbc(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	accum := cpu.regs.Accumulator
-	var carry byte
-	if cpu.flags.Carry {
-		carry = 1
+func sbc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		accum := cpu.regs.Accumulator
+		var carry byte
+		if cpu.flags.Carry {
+			carry = 1
+		}
+		cpu.regs.Accumulator = cpu.regs.Accumulator - val - (1 - carry)
+		cpu.setFlagsFromByte(cpu.regs.Accumulator)
+		cpu.flags.Carry = uint16(accum)-uint16(val)-uint16(1-carry) > 0xFF
+		cpu.flags.Overflow = (accum^val)&0x80 != 0 && (val^cpu.regs.Accumulator)&0x80 != 0
 	}
-	cpu.regs.Accumulator = cpu.regs.Accumulator - val - (1 - carry)
-	cpu.setFlagsFromByte(cpu.regs.Accumulator)
-	cpu.flags.Carry = uint16(accum)-uint16(val)-uint16(1-carry) > 0xFF
-	cpu.flags.Overflow = (accum^val)&0x80 != 0 && (val^cpu.regs.Accumulator)&0x80 != 0
 }
 
-func cmp(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.compare(cpu.regs.Accumulator, cpu.read8(addr))
+func cmp(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.compare(cpu.regs.Accumulator, cpu.read8(addr))
+	}
 }
 
-func cpx(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.compare(cpu.regs.IndexX, cpu.read8(addr))
+func cpx(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.compare(cpu.regs.IndexX, cpu.read8(addr))
+	}
 }
 
-func cpy(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.compare(cpu.regs.IndexY, cpu.read8(addr))
+func cpy(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.compare(cpu.regs.IndexY, cpu.read8(addr))
+	}
 }
 
 // Increments and Decrements
 
-func inc(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	val++
-	cpu.setResultFlags(val)
-	cpu.write8(addr, val)
+func inc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		val++
+		cpu.setResultFlags(val)
+		cpu.write8(addr, val)
+	}
 }
 
-func inx(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexX++
-	cpu.setResultFlags(cpu.regs.IndexX)
+func inx(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexX++
+		cpu.setResultFlags(cpu.regs.IndexX)
+	}
 }
 
-func iny(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexY++
-	cpu.setResultFlags(cpu.regs.IndexY)
+func iny(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexY++
+		cpu.setResultFlags(cpu.regs.IndexY)
+	}
 }
 
-func dec(cpu *CPU, addr uint16, mode AddressMode) {
-	val := cpu.read8(addr)
-	val--
-	cpu.setResultFlags(val)
-	cpu.write8(addr, val)
+func dec(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		val := cpu.read8(addr)
+		val--
+		cpu.setResultFlags(val)
+		cpu.write8(addr, val)
+	}
 }
 
-func dex(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexX--
-	cpu.setResultFlags(cpu.regs.IndexX)
+func dex(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexX--
+		cpu.setResultFlags(cpu.regs.IndexX)
+	}
 }
 
-func dey(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.regs.IndexY--
-	cpu.setResultFlags(cpu.regs.IndexY)
+func dey(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.regs.IndexY--
+		cpu.setResultFlags(cpu.regs.IndexY)
+	}
 }
 
 // Shifts
 
-func asl(cpu *CPU, addr uint16, mode AddressMode) {
-	if mode == AddressAccumulator {
-		cpu.flags.Carry = (cpu.regs.Accumulator>>7)&0x1 == 1
-		cpu.regs.Accumulator <<= 1
-		cpu.setResultFlags(cpu.regs.Accumulator)
-	} else {
-		val := cpu.read8(addr)
-		cpu.flags.Carry = (val>>7)&0x1 == 1
-		val <<= 1
-		cpu.write8(addr, val)
-		cpu.setResultFlags(val)
+func asl(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if mode == AddressAccumulator {
+			cpu.flags.Carry = (cpu.regs.Accumulator>>7)&0x1 == 1
+			cpu.regs.Accumulator <<= 1
+			cpu.setResultFlags(cpu.regs.Accumulator)
+		} else {
+			val := cpu.read8(addr)
+			cpu.flags.Carry = (val>>7)&0x1 == 1
+			val <<= 1
+			cpu.write8(addr, val)
+			cpu.setResultFlags(val)
+		}
 	}
 }
 
-func lsr(cpu *CPU, addr uint16, mode AddressMode) {
-	if mode == AddressAccumulator {
-		cpu.flags.Carry = cpu.regs.Accumulator&0x1 == 1
-		cpu.regs.Accumulator >>= 1
-		cpu.setResultFlags(cpu.regs.Accumulator)
-	} else {
-		val := cpu.read8(addr)
-		cpu.flags.Carry = val&0x1 == 1
-		val >>= 1
-		cpu.write8(addr, val)
-		cpu.setResultFlags(val)
+func lsr(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if mode == AddressAccumulator {
+			cpu.flags.Carry = cpu.regs.Accumulator&0x1 == 1
+			cpu.regs.Accumulator >>= 1
+			cpu.setResultFlags(cpu.regs.Accumulator)
+		} else {
+			val := cpu.read8(addr)
+			cpu.flags.Carry = val&0x1 == 1
+			val >>= 1
+			cpu.write8(addr, val)
+			cpu.setResultFlags(val)
+		}
 	}
 }
 
-func rol(cpu *CPU, addr uint16, mode AddressMode) {
-	oldCarry := cpu.flags.Carry
-	if mode == AddressAccumulator {
-		cpu.flags.Carry = (cpu.regs.Accumulator>>7)&0x1 == 1
-		cpu.regs.Accumulator <<= 1
-		if oldCarry {
-			cpu.regs.Accumulator |= 0x1
+func rol(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		oldCarry := cpu.flags.Carry
+		if mode == AddressAccumulator {
+			cpu.flags.Carry = (cpu.regs.Accumulator>>7)&0x1 == 1
+			cpu.regs.Accumulator <<= 1
+			if oldCarry {
+				cpu.regs.Accumulator |= 0x1
+			}
+			cpu.setResultFlags(cpu.regs.Accumulator)
+		} else {
+			val := cpu.read8(addr)
+			cpu.flags.Carry = (val>>7)&0x1 == 1
+			val <<= 1
+			if oldCarry {
+				val |= 0x1
+			}
+			cpu.write8(addr, val)
+			cpu.setResultFlags(val)
 		}
-		cpu.setResultFlags(cpu.regs.Accumulator)
-	} else {
-		val := cpu.read8(addr)
-		cpu.flags.Carry = (val>>7)&0x1 == 1
-		val <<= 1
-		if oldCarry {
-			val |= 0x1
-		}
-		cpu.write8(addr, val)
-		cpu.setResultFlags(val)
 	}
 }
 
-func ror(cpu *CPU, addr uint16, mode AddressMode) {
-	oldCarry := cpu.flags.Carry
-	if mode == AddressAccumulator {
-		cpu.flags.Carry = cpu.regs.Accumulator&0x1 == 1
-		cpu.regs.Accumulator >>= 1
-		if oldCarry {
-			cpu.regs.Accumulator |= 0x80
+func ror(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		oldCarry := cpu.flags.Carry
+		if mode == AddressAccumulator {
+			cpu.flags.Carry = cpu.regs.Accumulator&0x1 == 1
+			cpu.regs.Accumulator >>= 1
+			if oldCarry {
+				cpu.regs.Accumulator |= 0x80
+			}
+			cpu.setResultFlags(cpu.regs.Accumulator)
+		} else {
+			val := cpu.read8(addr)
+			cpu.flags.Carry = val&0x1 == 1
+			val >>= 1
+			if oldCarry {
+				val |= 0x80
+			}
+			cpu.write8(addr, val)
+			cpu.setResultFlags(val)
 		}
-		cpu.setResultFlags(cpu.regs.Accumulator)
-	} else {
-		val := cpu.read8(addr)
-		cpu.flags.Carry = val&0x1 == 1
-		val >>= 1
-		if oldCarry {
-			val |= 0x80
-		}
-		cpu.write8(addr, val)
-		cpu.setResultFlags(val)
 	}
 }
 
 // Jumps and Calls
 
-func jmp(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.pc = addr
+func jmp(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.pc = addr
+	}
 }
 
-func jsr(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.stackPush16(cpu.pc - 1)
-	cpu.pc = addr
+func jsr(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.stackPush16(cpu.pc - 1)
+		cpu.pc = addr
+	}
 }
 
-func rts(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.pc = cpu.stackPull16() + 1
+func rts(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.pc = cpu.stackPull16() + 1
+	}
 }
 
 // Branches
 
-func bcc(cpu *CPU, addr uint16, mode AddressMode) {
-	if !cpu.flags.Carry {
-		cpu.branch(addr)
+func bcc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if !cpu.flags.Carry {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bcs(cpu *CPU, addr uint16, mode AddressMode) {
-	if cpu.flags.Carry {
-		cpu.branch(addr)
+func bcs(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if cpu.flags.Carry {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func beq(cpu *CPU, addr uint16, mode AddressMode) {
-	if cpu.flags.Zero {
-		cpu.branch(addr)
+func beq(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if cpu.flags.Zero {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bmi(cpu *CPU, addr uint16, mode AddressMode) {
-	if cpu.flags.Negative {
-		cpu.branch(addr)
+func bmi(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if cpu.flags.Negative {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bne(cpu *CPU, addr uint16, mode AddressMode) {
-	if !cpu.flags.Zero {
-		cpu.branch(addr)
+func bne(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if !cpu.flags.Zero {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bpl(cpu *CPU, addr uint16, mode AddressMode) {
-	if !cpu.flags.Negative {
-		cpu.branch(addr)
+func bpl(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if !cpu.flags.Negative {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bvc(cpu *CPU, addr uint16, mode AddressMode) {
-	if !cpu.flags.Overflow {
-		cpu.branch(addr)
+func bvc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if !cpu.flags.Overflow {
+			cpu.branch(addr)
+		}
 	}
 }
 
-func bvs(cpu *CPU, addr uint16, mode AddressMode) {
-	if cpu.flags.Overflow {
-		cpu.branch(addr)
+func bvs(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		if cpu.flags.Overflow {
+			cpu.branch(addr)
+		}
 	}
 }
 
 // Status Flag Changes
 
-func clc(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.flags.Carry = false
+func clc(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.flags.Carry = false
+	}
 }
 
-func cld(cpu *CPU, addr uint16, mode AddressMode) {
+func cld(cpu *CPU, addr uint16, mode AddressMode) func() {
 	// We don't track the decimal flag
+	return nil
 }
 
-func cli(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.flags.InterruptDisable = false
+func cli(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.flags.InterruptDisable = false
+	}
 }
 
-func clv(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.flags.Overflow = false
+func clv(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.flags.Overflow = false
+	}
 }
 
-func sec(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.flags.Carry = true
+func sec(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.flags.Carry = true
+	}
 }
 
-func sed(cpu *CPU, addr uint16, mode AddressMode) {
-	// We don't track the decimal flag
+func sed(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		// We don't track the decimal flag
+	}
 }
 
-func sei(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.flags.InterruptDisable = true
+func sei(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.flags.InterruptDisable = true
+	}
 }
 
 // System Functions
 
-func brk(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.interrupt()
-	// TODO: Should this set InterruptDisable instead?
-	cpu.flags.BreakCmd = true
+func brk(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.irq()
+		// TODO: Should this set InterruptDisable instead?
+		cpu.flags.BreakCmd = true
+	}
 }
 
-func rti(cpu *CPU, addr uint16, mode AddressMode) {
-	cpu.setFlagsFromByte(cpu.stackPull8())
-	cpu.pc = cpu.stackPull16()
+func rti(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		cpu.setFlagsFromByte(cpu.stackPull8())
+		cpu.pc = cpu.stackPull16()
+	}
 }
 
-func nop(cpu *CPU, addr uint16, mode AddressMode) {}
+func nop(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return nil
+}
 
 // Unofficial / Illegal Opcodes
 // http://wiki.nesdev.com/w/index.php/Programming_with_unofficial_opcodes
 // http://www.oxyron.de/html/opcodes02.html
 // We implement these for compatibility, even though they aren't part of the 6502 spec
 
-func alr(cpu *CPU, addr uint16, mode AddressMode) {
-	and(cpu, addr, mode)
-	lsr(cpu, 0, AddressAccumulator)
+func alr(cpu *CPU, addr uint16, mode AddressMode) func() {
+	return func() {
+		and(cpu, addr, mode)
+		lsr(cpu, 0, AddressAccumulator)
+	}
 }
 
 // TODO: Implement more of these
@@ -715,8 +828,10 @@ func instHalt() *inst {
 	return &inst{
 		name:        "KIL",
 		addressMode: AddressImplicit,
-		op: func(cpu *CPU, addr uint16, mode AddressMode) {
-			cpu.halted = true
+		op: func(cpu *CPU, addr uint16, mode AddressMode) func() {
+			return func() {
+				cpu.halted = true
+			}
 		},
 	}
 }
