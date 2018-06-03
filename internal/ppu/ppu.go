@@ -1,7 +1,6 @@
 package ppu
 
 import (
-	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
 )
@@ -63,29 +62,11 @@ func (p *PPU) Reset() {
 	// TODO: Reset sequence
 }
 
-const clockDivisor = 4
-
-func (p *PPU) Run(ctx context.Context, clock <-chan struct{}) {
-	subCycles := 0
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-clock:
-			subCycles++
-			if subCycles >= clockDivisor {
-				subCycles = 0
-				p.step()
-			}
-		}
-	}
-}
-
 func (p *PPU) Frames() uint64 {
 	return p.frames
 }
 
-func (p *PPU) step() {
+func (p *PPU) Step() {
 	defer func() { p.cycles++ }()
 
 	p.stepNMI()

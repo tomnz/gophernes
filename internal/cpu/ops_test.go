@@ -228,12 +228,9 @@ func TestOps(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			mem := newTestMemory(tc.data, tc.prg)
-			cpu := cpu.NewCPU(mem, cpu.WithTrace())
+			cpu := cpu.NewCPU(mem, cpu.WithTrace(true))
 			cpu.Reset()
-			cycles, err := cpu.RunTilHalt()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
+			cycles := cpu.RunTilHalt()
 
 			if tc.regs != nil {
 				if diff := cmp.Diff(*tc.regs, cpu.Registers()); diff != "" {

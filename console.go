@@ -3,7 +3,6 @@ package gophernes
 import (
 	"io"
 
-	"context"
 	"github.com/sirupsen/logrus"
 	"github.com/tomnz/gophernes/internal/cartridge"
 	"github.com/tomnz/gophernes/internal/cpu"
@@ -55,23 +54,23 @@ func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, opts 
 	return console, nil
 }
 
+const (
+	cpuClockDivisor = 12
+	ppuClockDivisor = 12
+)
+
 func (c *Console) Run() {
-	ctx := context.Background()
-
-	// Single-length to keep in sync, but allow parallelism
-	cpuClock := make(chan struct{}, 1)
-	ppuClock := make(chan struct{}, 1)
-
-	go c.cpu.Run(ctx, cpuClock)
-	go c.ppu.Run(ctx, ppuClock)
-
 	startTime := time.Now()
-	var frames uint64
+	var clock, frames uint64
 
 	for {
-		// TODO: Timing
-		cpuClock <- struct{}{}
-		ppuClock <- struct{}{}
+		if clock%cpuClockDivisor == 0 {
+			c.cpu.Step()
+		}
+		if clock%ppuClockDivisor == 0 {
+			c.ppu.Step()
+		}
+		clock++
 		if frames != c.ppu.Frames() {
 			frames = c.ppu.Frames()
 			c.frameWait(startTime, frames)
@@ -80,23 +79,17 @@ func (c *Console) Run() {
 }
 
 func (c *Console) RunCycles(cycles uint64) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Single-length to keep in sync, but allow parallelism
-	cpuClock := make(chan struct{}, 1)
-	ppuClock := make(chan struct{}, 1)
-
-	go c.cpu.Run(ctx, cpuClock)
-	go c.ppu.Run(ctx, ppuClock)
-
 	startTime := time.Now()
-	var frames uint64
+	var clock, frames uint64
 
 	for i := uint64(0); i < cycles; i++ {
-		// TODO: Timing
-		cpuClock <- struct{}{}
-		ppuClock <- struct{}{}
+		if clock%cpuClockDivisor == 0 {
+			c.cpu.Step()
+		}
+		if clock%ppuClockDivisor == 0 {
+			c.ppu.Step()
+		}
+		clock++
 		if frames != c.ppu.Frames() {
 			frames = c.ppu.Frames()
 			c.frameWait(startTime, frames)

@@ -1,7 +1,6 @@
 package cpu
 
 import (
-	"context"
 	"errors"
 
 	"github.com/sirupsen/logrus"
@@ -122,40 +121,14 @@ func (c *CPU) Reset() {
 	}
 }
 
-const clockDivisor = 12
-
-func (c *CPU) Run(ctx context.Context, clock <-chan struct{}) {
-	subCycles := 0
-	cycles := uint64(0)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-clock:
-			subCycles++
-			if subCycles >= clockDivisor {
-				subCycles = 0
-				cycles++
-				_, err := c.step()
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-	}
-}
-
-func (c *CPU) RunTilHalt() (uint64, error) {
+func (c *CPU) RunTilHalt() uint64 {
 	var cycles uint64
 	for {
-		stepCycles, err := c.step()
-		cycles += stepCycles
-		if err != nil {
-			if err == ErrHalted {
-				return cycles, nil
-			}
-			return cycles, err
+		if c.halted {
+			return cycles
 		}
+		c.Step()
+		cycles++
 	}
 }
 
@@ -177,9 +150,9 @@ func (c *CPU) Cycles() uint64 {
 	return c.cycles
 }
 
-func (c *CPU) step() (uint64, error) {
+func (c *CPU) Step() {
 	if c.halted {
-		return 0, ErrHalted
+		panic("cpu halted")
 	}
 	defer func() { c.cycles++ }()
 
@@ -223,7 +196,6 @@ func (c *CPU) step() (uint64, error) {
 		nextOp()
 	}
 	c.opQueue = c.opQueue[1:]
-	return 1, nil
 }
 
 func (c *CPU) nmi() {
