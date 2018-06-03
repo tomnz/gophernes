@@ -43,8 +43,6 @@ type PPU struct {
 	regs    Registers
 	portBus byte
 
-	// addrLatch is used to funnel writes to the Scroll and Address registers
-	addrLatch,
 	spriteOverflow,
 	sprite0Hit,
 	nmiOccurred,
@@ -56,6 +54,8 @@ type PPU struct {
 
 	vramAddr,
 	vramTempAddr uint16
+	// addrLatch is used to funnel writes to the Scroll and Address registers
+	addrLatch bool
 }
 
 func (p *PPU) Reset() {
@@ -67,11 +67,79 @@ func (p *PPU) Frames() uint64 {
 }
 
 func (p *PPU) Step() {
+	// Perform the vertical blank handling as needed
 	p.stepNMI()
 
+	renderEnabled := p.regs.ShowBackground || p.regs.ShowSprites
+
+	if renderEnabled {
+		if p.lineCycle >= 1 && p.lineCycle <= 256 {
+			switch p.lineCycle % 8 {
+			case 1:
+				p.readNametable()
+			}
+			if p.lineCycle == 256 {
+				p.incrementY()
+			} else if p.lineCycle%8 == 0 {
+				p.incrementX()
+			}
+
+		} else if p.lineCycle == 257 {
+			p.resetX()
+		}
+
+		if p.scanLine == 261 {
+			if p.lineCycle >= 280 && p.lineCycle <= 304 {
+				p.resetY()
+			}
+		}
+	}
+
+	// Move to the next cell/scanline as needed
 	p.stepScan()
 
 	p.cycles++
+}
+
+func (p *PPU) readNametable() {
+	p.read8(p.vramAddr)
+}
+
+func (p *PPU) incrementX() {
+	if p.vramAddr&0x1F == 31 {
+		p.vramAddr &= ^uint16(0x1F)
+		p.vramAddr ^= 0x400
+	} else {
+		p.vramAddr++
+	}
+}
+
+func (p *PPU) incrementY() {
+	// TODO: Make this cleaner?
+	// http://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+	if p.vramAddr&0x7000 != 0x7000 {
+		p.vramAddr += 0x1000
+	} else {
+		p.vramAddr &= ^uint16(0x7000)
+		y := (p.vramAddr & 0x3E0) >> 5
+		if y == 29 {
+			y = 0
+			p.vramAddr ^= 0x800
+		} else if y == 31 {
+			y = 0
+		} else {
+			y++
+		}
+		p.vramAddr = p.vramAddr & ^uint16(0x3E0) | (y << 5)
+	}
+}
+
+func (p *PPU) resetX() {
+	p.vramAddr = (p.vramAddr & 0xFBE0) | (p.vramTempAddr & 0x41F)
+}
+
+func (p *PPU) resetY() {
+	p.vramAddr = (p.vramAddr & 0x841F) | (p.vramTempAddr & 0x7BE0)
 }
 
 func (p *PPU) stepNMI() {

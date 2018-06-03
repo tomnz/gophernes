@@ -45,7 +45,7 @@ func (n *nrom) PPURead(addr uint16, vram []byte) byte {
 		return n.chr[addr]
 	}
 	if addr >= 0x2000 && addr < 0x3EFF {
-		return vram[0x7FF]
+		return vram[addr&0x7FF]
 	}
 	panic(fmt.Sprintf("unhandled memory read from address %#x", addr))
 }
