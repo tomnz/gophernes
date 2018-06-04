@@ -3,6 +3,7 @@ package cpu
 import (
 	"errors"
 
+	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
@@ -64,22 +65,23 @@ type Flags struct {
 func (f Flags) asByte() byte {
 	var flags byte
 	if f.Negative {
-		flags |= 0x1 << 6
+		flags |= 1 << 7
 	}
 	if f.Overflow {
-		flags |= 0x1 << 5
+		flags |= 1 << 6
 	}
+	flags |= 1 << 5
 	if f.BreakCmd {
-		flags |= 0x1 << 4
+		flags |= 1 << 4
 	}
 	if f.InterruptDisable {
-		flags |= 0x1 << 2
+		flags |= 1 << 2
 	}
 	if f.Zero {
-		flags |= 0x1 << 1
+		flags |= 1 << 1
 	}
 	if f.Carry {
-		flags |= 0x1 << 0
+		flags |= 1 << 0
 	}
 	return flags
 }
@@ -93,10 +95,10 @@ func (c *CPU) Flags() Flags {
 }
 
 func (c *CPU) setFlagsFromByte(flags byte) {
-	c.flags.Negative = (flags>>6)&1 == 1
-	c.flags.Overflow = (flags>>5)&1 == 1
+	c.flags.Negative = (flags>>7)&1 == 1
+	c.flags.Overflow = (flags>>6)&1 == 1
 	c.flags.BreakCmd = (flags>>4)&1 == 1
-	c.flags.InterruptDisable = (flags>>1)&1 == 1
+	c.flags.InterruptDisable = (flags>>2)&1 == 1
 	c.flags.Zero = (flags>>1)&1 == 1
 	c.flags.Carry = (flags>>0)&1 == 1
 }
@@ -109,10 +111,10 @@ const (
 
 func (c *CPU) Reset() {
 	c.flags = Flags{
-		BreakCmd:         true,
 		InterruptDisable: true,
 	}
 
+	c.regs.StackPtr = 0xFD
 	c.pc = c.read16(resetVector)
 	c.halted = false
 
@@ -143,7 +145,9 @@ func (c *CPU) NMI() {
 }
 
 func (c *CPU) IRQ() {
-	c.shouldIRQ = true
+	if !c.flags.InterruptDisable {
+		c.shouldIRQ = true
+	}
 }
 
 func (c *CPU) Cycles() uint64 {
@@ -171,8 +175,7 @@ func (c *CPU) Step() {
 
 			if c.config.trace {
 				// TODO: Better tracing! Let's store this as objects instead of logging
-				logrus.Debugf("CPU: PC: %#x", c.pc)
-				logrus.Debugf("CPU: Op: %s", inst.fullName())
+				c.trace(inst)
 			}
 			addr, cross := c.resolve(inst.addressMode)
 			op := inst.op(c, addr, inst.addressMode)
@@ -197,28 +200,49 @@ func (c *CPU) Step() {
 	c.cycles++
 }
 
+func (c *CPU) trace(inst *inst) {
+	spaces := ""
+	for i := 0xFF; i > int(c.regs.StackPtr); i-- {
+		spaces += " "
+	}
+
+	fmt.Printf(
+		// "CPU: c%d  A:%02X X:%02X Y:%02X S:%02X %s$%04X  %s\n",
+		"A:%02X X:%02X Y:%02X S:%02X  %s$%04X %s\n",
+		c.regs.Accumulator,
+		c.regs.IndexX,
+		c.regs.IndexY,
+		c.regs.StackPtr,
+		spaces,
+		// Op read advanced the PC - decrement one for trace
+		c.pc-1,
+		inst.name,
+	)
+}
+
 func (c *CPU) nmi() {
-	c.stackPush16(c.pc - 1)
+	c.stackPush16(c.pc)
 	c.stackPush8(c.flags.asByte())
+	c.flags.InterruptDisable = true
 	c.pc = c.read16(nmiVector)
 }
 
 func (c *CPU) irq() {
-	c.stackPush16(c.pc - 1)
+	c.stackPush16(c.pc)
 	c.stackPush8(c.flags.asByte())
+	c.flags.InterruptDisable = true
 	c.pc = c.read16(irqVector)
 }
 
 func (c *CPU) branch(offset uint16) {
-	page := c.pc >> 2
-	if offset < 0x80 {
-		c.pc += offset
-	} else {
-		c.pc += offset - 0x100
+	page := c.pc >> 8
+	c.pc += offset
+	if offset >= 0x80 {
+		c.pc -= 0x100
 	}
 	// Special case - need to manually add cycles
 	c.Sleep(1)
-	if page != c.pc>>2 {
+	if page != c.pc>>8 {
 		// Page cross
 		c.Sleep(2)
 	}
@@ -253,6 +277,20 @@ func (c *CPU) read16(addr uint16) uint16 {
 	return result
 }
 
+func (c *CPU) read16Wrap(addr uint16) (uint16, bool) {
+	// Handle incorrect case where original 6502 wraps using high byte from the same page
+	// http://obelisk.me.uk/6502/reference.html#JMP
+	page := addr >> 8
+	highAddr := addr + 1
+	cross := page != highAddr>>8
+	highAddr &= 0xFF
+	highAddr |= page << 8
+
+	lowVal := uint16(c.read8(addr))
+	highVal := uint16(c.read8(highAddr))
+	return highVal<<8 | lowVal, cross
+}
+
 func (c *CPU) write8(addr uint16, val byte) {
 	c.mem.Write(addr, val)
 }
@@ -266,11 +304,11 @@ func (c *CPU) stackPush8(val byte) {
 	stackAddr := uint16(c.regs.StackPtr)
 	stackAddr |= 0x100
 	c.write8(stackAddr, val)
-	c.regs.StackPtr++
+	c.regs.StackPtr--
 }
 
 func (c *CPU) stackPull8() byte {
-	c.regs.StackPtr--
+	c.regs.StackPtr++
 	stackAddr := uint16(c.regs.StackPtr)
 	stackAddr |= 0x100
 	return c.read8(stackAddr)

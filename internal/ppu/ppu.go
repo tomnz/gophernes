@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	internalVRAMSize = 0x800
+	internalVRAMSize = 0x1000
 	oamSize          = 0x100
 	DisplayWidth     = 256
 	DisplayHeight    = 240
@@ -82,7 +82,10 @@ type PPU struct {
 }
 
 func (p *PPU) Reset() {
-	// TODO: Reset sequence
+	p.lineCycle = 340
+	p.scanLine = 240
+	p.frames = 0
+	// TODO: Reset registers
 }
 
 func (p *PPU) Frames() uint64 {

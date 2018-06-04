@@ -98,33 +98,31 @@ func (c *CPU) resolve(mode AddressMode) (uint16, bool) {
 
 	case AddressAbsoluteX:
 		addr := c.prgRead16()
-		page := addr >> 2
+		page := addr >> 8
 		addr += uint16(c.regs.IndexX)
-		return addr, page != addr>>2
+		return addr, page != addr>>8
 
 	case AddressAbsoluteY:
 		addr := c.prgRead16()
-		page := addr >> 2
+		page := addr >> 8
 		addr += uint16(c.regs.IndexY)
-		return addr, page != addr>>2
+		return addr, page != addr>>8
 
 	case AddressIndirect:
-		// TODO: Handle incorrect case where original 6502 wraps high byte from the same page?
-		// http://obelisk.me.uk/6502/reference.html#JMP
-		return c.read16(c.prgRead16()), false
+		return c.read16Wrap(c.prgRead16())
 
 	case AddressIndirectX:
 		addr := uint16(c.prgRead8())
 		addr += uint16(c.regs.IndexX)
 		// Wrap around if we overflow the first page
-		addr &= 0xFF
-		return c.read16(addr), false
+		// addr &= 0xFF
+		return c.read16Wrap(addr)
 
 	case AddressIndirectY:
-		addr := c.read16(uint16(c.prgRead8()))
-		page := addr >> 2
+		addr, _ := c.read16Wrap(uint16(c.prgRead8()))
+		page := addr >> 8
 		addr += uint16(c.regs.IndexY)
-		return c.read16(addr), page != addr>>2
+		return addr, page != addr>>8
 	}
 	panic(fmt.Sprintf("couldn't resolve for address mode %d", mode))
 }

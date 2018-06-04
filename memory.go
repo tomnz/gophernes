@@ -2,6 +2,7 @@ package gophernes
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 func (c *Console) CPURead(addr uint16) byte {
@@ -20,7 +21,13 @@ func (c *Console) CPURead(addr uint16) byte {
 	} else if addr >= 0x4000 && addr < 0x4020 {
 		// Memory-mapped registers
 		switch addr & 0x1F {
-		// TODO: Handle more of these
+		case 0x16:
+			return 0
+		case 0x17:
+			return 0x03
+		default:
+			logrus.Infof("Read from unhandled IO addr: %#X", addr)
+			// TODO: Handle more of these
 		}
 		return 0
 
@@ -37,23 +44,31 @@ func (c *Console) CPUWrite(addr uint16, val byte) {
 		c.ram[addr&(internalRAMSize-1)] = val
 
 	} else if addr >= 0x2000 && addr < 0x4000 {
-		c.ppu.WriteReg(byte(addr&0x8), val)
-
-	} else if addr == 0x4014 {
-		// OAM DMA
-		oamData := make([]byte, 256)
-		srcAddr := uint16(val) << 8
-		for i := range oamData {
-			oamData[i] = c.CPURead(srcAddr)
-			srcAddr++
-		}
-		c.ppu.OAMDMA(oamData)
-		c.cpu.Sleep(513)
-		if c.cpu.Cycles()%2 == 1 {
-			c.cpu.Sleep(1)
-		}
+		c.ppu.WriteReg(byte(addr&0x7), val)
 
 	} else if addr >= 0x4000 && addr < 0x4020 {
+		switch addr & 0x1F {
+		case 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0xA, 0xB, 0xC, 0xE, 0xF, 0x10, 0x11, 0x12, 0x13, 0x15:
+			// APU
+		case 0x16, 0x17:
+			// Controllers
+		case 0x14:
+			// OAM DMA
+			oamData := make([]byte, 256)
+			srcAddr := uint16(val) << 8
+			for i := range oamData {
+				oamData[i] = c.CPURead(srcAddr)
+				srcAddr++
+			}
+			c.ppu.OAMDMA(oamData)
+			c.cpu.Sleep(513)
+			if c.cpu.Cycles()%2 == 1 {
+				c.cpu.Sleep(1)
+			}
+
+		default:
+			logrus.Infof("Write to unhandled IO addr: %#X", addr)
+		}
 
 	} else if addr >= 0x4020 {
 		c.cartridge.CPUWrite(addr, val)
@@ -64,12 +79,21 @@ func (c *Console) CPUWrite(addr uint16, val byte) {
 }
 
 func (c *Console) PPURead(addr uint16, vram []byte) byte {
-	// PPU memory is custom mapped by the cartridge
+	// Palette is a special case unaffected by the cartridge
+	if addr >= 0x3F00 && addr <= 0x3FFF {
+		return c.ppu.ReadPalette(addr % 0x20)
+	}
+
+	// The rest of PPU memory is custom mapped by the cartridge
 	return c.cartridge.PPURead(addr, vram)
 }
 
 func (c *Console) PPUWrite(addr uint16, val byte, vram []byte) {
-	panic("not implemented")
+	if addr >= 0x3F00 && addr <= 0x3FFF {
+		c.ppu.WritePalette(addr%0x20, val)
+	} else {
+		c.cartridge.PPUWrite(addr, val, vram)
+	}
 }
 
 func (c *Console) NMI() {

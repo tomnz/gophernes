@@ -92,14 +92,14 @@ func (p *PPU) fetchNameTableByte() {
 	p.nameTableByte = p.read8(address)
 }
 
-func (p *PPU) readPalette(address uint16) byte {
+func (p *PPU) ReadPalette(address uint16) byte {
 	if address >= 16 && address%4 == 0 {
 		address -= 16
 	}
 	return p.paletteData[address]
 }
 
-func (p *PPU) writePalette(addr uint16, val byte) {
+func (p *PPU) WritePalette(addr uint16, val byte) {
 	if addr >= 16 && addr%4 == 0 {
 		addr -= 16
 	}
@@ -202,7 +202,7 @@ func (p *PPU) renderPixel() {
 			color = background
 		}
 	}
-	p.backBuffer[y][x] = p.readPalette(uint16(color)) % 64
+	p.backBuffer[y][x] = p.ReadPalette(uint16(color)) % 64
 }
 
 func (p *PPU) fetchSpritePattern(i, row int) uint32 {

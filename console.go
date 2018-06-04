@@ -3,7 +3,6 @@ package gophernes
 import (
 	"io"
 
-	"github.com/sirupsen/logrus"
 	"github.com/tomnz/gophernes/internal/cartridge"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
@@ -133,7 +132,6 @@ func (c *Console) handleFrame(startTime time.Time, frames uint64) {
 	expected := startTime.Add(time.Duration(
 		float64(time.Second) * frameTime * float64(frames) / c.config.rate))
 	sleepDuration := expected.Sub(time.Now())
-	logrus.Debugf("%s", sleepDuration)
 	time.Sleep(sleepDuration)
 }
 
