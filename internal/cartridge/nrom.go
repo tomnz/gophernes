@@ -2,13 +2,14 @@ package cartridge
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 func newNROM(prg, chr []byte) (*nrom, error) {
 	var prgMask uint16
 	if len(prg) == 0x4000 {
 		prgMask = 0x3FFF
-	} else if len(prg) != 0x8000 {
+	} else if len(prg) == 0x8000 {
 		prgMask = 0x7FFF
 	} else {
 		return nil, fmt.Errorf("expected PRG ROM to be 16KB or 32KB, got %d B", len(prg))
@@ -58,7 +59,10 @@ func (n *nrom) PPURead(addr uint16, vram []byte) byte {
 }
 
 func (n *nrom) PPUWrite(addr uint16, val byte, vram []byte) {
-	if addr >= 0x2000 && addr <= 0x3EFF {
+	if addr < 0x2000 {
+		logrus.Warnf("Write to read-only CHR address %#X in cartridge", addr)
+		n.chr[addr] = val
+	} else if addr >= 0x2000 && addr <= 0x3EFF {
 		vram[addr&0xFFF] = val
 	} else {
 		panic(fmt.Sprintf("unhandled NROM PPU memory write to address %#x", addr))

@@ -280,6 +280,7 @@ func (p *PPU) WriteReg(reg byte, val byte) {
 		// TODO: Handle "glitchy" writes during rendering?
 		// http://wiki.nesdev.com/w/index.php/PPU_registers
 		p.oam[p.regs.OAMAddr] = val
+		p.regs.OAMAddr++
 
 	case regScroll:
 		if !p.addrLatch {

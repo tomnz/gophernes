@@ -114,7 +114,7 @@ func (c *CPU) Reset() {
 		InterruptDisable: true,
 	}
 
-	c.regs.StackPtr = 0xFD
+	c.regs.StackPtr = 0xFF
 	c.pc = c.read16(resetVector)
 	c.halted = false
 
@@ -244,7 +244,7 @@ func (c *CPU) branch(offset uint16) {
 	c.Sleep(1)
 	if page != c.pc>>8 {
 		// Page cross
-		c.Sleep(2)
+		c.Sleep(1)
 	}
 }
 
