@@ -108,6 +108,7 @@ func run(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option) {
 		romFile,
 		cpuopts,
 		ppuopts,
+		nil,
 		gophernes.WithRate(*rate),
 		gophernes.WithDraw(draw),
 	)
@@ -135,6 +136,7 @@ func runHeadless(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option) 
 		romFile,
 		cpuopts,
 		ppuopts,
+		nil,
 		gophernes.WithRate(*rate),
 	)
 	if err != nil {

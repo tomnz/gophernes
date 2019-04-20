@@ -21,10 +21,15 @@ func (c *Console) CPURead(addr uint16) byte {
 	} else if addr >= 0x4000 && addr < 0x4020 {
 		// Memory-mapped registers
 		switch addr & 0x1F {
+		case 0x15:
+			return c.apu.ReadReg(0x15)
+
 		case 0x16:
 			return 0
+
 		case 0x17:
 			return 0x03
+
 		default:
 			logrus.Infof("Read from unhandled IO addr: %#X", addr)
 			// TODO: Handle more of these
@@ -50,8 +55,11 @@ func (c *Console) CPUWrite(addr uint16, val byte) {
 		switch addr & 0x1F {
 		case 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0xA, 0xB, 0xC, 0xE, 0xF, 0x10, 0x11, 0x12, 0x13, 0x15:
 			// APU
+			c.apu.WriteReg(byte(addr&0x1F), val)
+
 		case 0x16, 0x17:
 			// Controllers
+
 		case 0x14:
 			// OAM DMA
 			oamData := make([]byte, 256)

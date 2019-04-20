@@ -3,6 +3,7 @@ package gophernes
 import (
 	"io"
 
+	"github.com/tomnz/gophernes/internal/apu"
 	"github.com/tomnz/gophernes/internal/cartridge"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
@@ -16,6 +17,7 @@ type Console struct {
 	ram       []byte
 	cpu       *cpu.CPU
 	ppu       *ppu.PPU
+	apu       *apu.APU
 	img       *image.RGBA
 	cartridge cartridge.Cartridge
 }
@@ -26,7 +28,7 @@ const (
 )
 
 // NewConsole initializes a new console.
-func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, opts ...Option) (*Console, error) {
+func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, apuopts []apu.Option, opts ...Option) (*Console, error) {
 	config := defaultConfig()
 	for _, opt := range opts {
 		opt(config)
@@ -46,12 +48,15 @@ func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, opts 
 
 	cpu := cpu.NewCPU(&cpuMemory{console}, cpuopts...)
 	ppu := ppu.NewPPU(&ppuMemory{console}, ppuopts...)
+	apu := apu.NewAPU(cpu, apuopts...)
 
 	cpu.Reset()
 	ppu.Reset()
+	apu.Reset()
 
 	console.cpu = cpu
 	console.ppu = ppu
+	console.apu = apu
 
 	return console, nil
 }
