@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten"
 	"github.com/sirupsen/logrus"
 	"github.com/tomnz/gophernes"
+	"github.com/tomnz/gophernes/internal/apu"
 	"github.com/tomnz/gophernes/internal/cpu"
 	"github.com/tomnz/gophernes/internal/ppu"
 	"io"
@@ -25,6 +26,7 @@ var (
 
 	cputrace = flag.Bool("cputrace", false, "Include the CPU trace")
 	pputrace = flag.Bool("pputrace", false, "Include the PPU trace")
+	aputrace = flag.Bool("aputrace", false, "Include the APU trace")
 
 	cpuprofile = flag.String("cpuprofile", "", "Write host CPU profile to this file")
 	memprofile = flag.String("memprofile", "", "Write host memory profile to this file")
@@ -81,13 +83,16 @@ func main() {
 	ppuopts := []ppu.Option{
 		ppu.WithTrace(*pputrace),
 	}
+	apuopts := []apu.Option{
+		apu.WithTrace(*aputrace),
+	}
 
 	logrus.SetLevel(logrus.DebugLevel)
 
 	if *headless {
-		runHeadless(romFile, cpuopts, ppuopts)
+		runHeadless(romFile, cpuopts, ppuopts, apuopts)
 	} else {
-		run(romFile, cpuopts, ppuopts)
+		run(romFile, cpuopts, ppuopts, apuopts)
 	}
 
 	if *memprofile != "" {
@@ -103,12 +108,12 @@ func main() {
 	}
 }
 
-func run(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option) {
+func run(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, apuopts []apu.Option) {
 	console, err := gophernes.NewConsole(
 		romFile,
 		cpuopts,
 		ppuopts,
-		nil,
+		apuopts,
 		gophernes.WithRate(*rate),
 		gophernes.WithDraw(draw),
 	)
@@ -131,12 +136,12 @@ func run(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option) {
 	}
 }
 
-func runHeadless(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option) {
+func runHeadless(romFile io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, apuopts []apu.Option) {
 	console, err := gophernes.NewConsole(
 		romFile,
 		cpuopts,
 		ppuopts,
-		nil,
+		apuopts,
 		gophernes.WithRate(*rate),
 	)
 	if err != nil {

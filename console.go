@@ -63,7 +63,8 @@ func NewConsole(rom io.Reader, cpuopts []cpu.Option, ppuopts []ppu.Option, apuop
 
 const (
 	cpuClockDivisor = 12
-	ppuClockDivisor = 12
+	ppuClockDivisor = 4
+	apuClockDivisor = 12
 )
 
 func (c *Console) Run() {
@@ -81,6 +82,9 @@ func (c *Console) Run() {
 				frames = currFrames
 				c.handleFrame(startTime, frames)
 			}
+		}
+		if clock%apuClockDivisor == 0 {
+			c.apu.Step()
 		}
 		clock++
 	}
