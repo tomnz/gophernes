@@ -101,20 +101,20 @@ type dmcChannel struct {
 }
 
 func (p *pulseChannel) step() {
-	if p.timer == 0 {
-		p.timer =
-	}
-
-	if p.divider == 0 {
-		tick = true
-		p.divider = p.dividerLoad
-	} else {
-		p.divider--
-	}
-
-	if !tick {
-		return
-	}
+	//if p.timer == 0 {
+	//	p.timer =
+	//}
+	//
+	//if p.divider == 0 {
+	//	tick = true
+	//	p.divider = p.dividerLoad
+	//} else {
+	//	p.divider--
+	//}
+	//
+	//if !tick {
+	//	return
+	//}
 
 }
 
